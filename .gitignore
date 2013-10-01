@@ -1,3 +1,4 @@
+*~
 *.acn
 *.acr
 *.alg
@@ -5,6 +6,7 @@
 *.bbl
 *.blg
 *.dvi
+*.eps
 *.fdb_latexmk
 *.glg
 *.glo
@@ -23,6 +25,7 @@
 *.nlo
 *.out
 *.pdfsync
+*.pdf
 *.ps
 *.snm
 *.synctex.gz
