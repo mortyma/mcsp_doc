@@ -1,0 +1,171 @@
+\documentclass[a4paper,12pt]{article}
+\usepackage[utf8]{inputenc}
+
+\usepackage{comment}
+\usepackage{hyperref}
+%page boarders
+\usepackage[vmargin=3cm, hmargin=3cm]{geometry}
+\usepackage{float}
+\floatstyle{plaintop}
+\usepackage{paralist} %compactitem
+\usepackage{fixltx2e} %some latex fixes
+\usepackage{microtype} %Subliminal refinements towards typographical perfection
+\setlength{\emergencystretch}{2em}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{mathrsfs} %Support use of the Raph Smith’s Formal Script font in mathematics
+\usepackage[sc]{mathpazo} %mathematical fonts
+\usepackage{amsfonts}
+\usepackage{booktabs}
+\usepackage[margin=10pt, font=small, labelfont=bf]{caption}
+\usepackage{color}
+
+
+%######################################################################
+% custom commands
+%######################################################################
+\newcommand\todo[1]{\textcolor{red}{#1}}
+
+
+
+%######################################################################
+% symbol definitions
+% use in math mode only
+%######################################################################
+% big-O of
+% \O is the diameter symbol, which we will not need
+\renewcommand\O[1]{O\left(#1\right)}
+
+% Priority vector
+% number of dimensions
+\newcommand\pv[1]{\mathbf{#1}}
+\newcommand\pdim{D} 				
+% Lower bound for values of dimension i
+\newcommand\Li{L_{i}} 
+% Upper bound for values of dimension i
+\newcommand\Ui{U_{i}}
+% dominates
+\newcommand\dominates{\prec}
+
+% Block (internals)										
+% maximum size of a partition
+\newcommand\mps{S_p}								
+% maximum number of attempts to generate a new pivot element
+\newcommand\apg{A_{pg}}
+% maximum number of attempts to further partition a block
+\newcommand\apb{A_{pb}}
+% level of a block
+\newcommand\lvl{l}
+% capacity of a block
+\newcommand\capacity{c}
+
+\begin{document}
+%######################################################################
+% Title page
+%######################################################################
+\title{Pareto Task Storage for Pheet}
+\author{
+Martin Kalany
+}
+\date{\today}
+
+\maketitle
+
+%######################################################################
+% Notation
+%######################################################################
+\section{Notation}\label{sec:notation}
+\begin{itemize}
+\item $m$: Number of tasks added.
+\item $n$: Number of tasks in task storage at time $t$.
+\item Task storage block:
+	\begin{itemize}
+	\item $\lvl$: Level of the block.
+	\item $\capacity$: Capacity of a block. $c=2^\lvl$.
+	\item $\mps$: Maximum size of a partition that we strive for. Can not always be achieved.
+	\item $\apg$: Maximum number of attempts to generate a new pivot element.
+	\item $\apb$: Maximum number of attempts to further partition a block. \todo{maybe use $A_\pi$ (partitioning is a permutation operation) as index?}
+	\end{itemize}
+\item Priority vector:
+	\begin{itemize}
+	\item $\pv{v}$, $\pv{w}$: Priority vectors.
+	\item $v_i$: Value of priority vector $\pv{v}$ at index $i$.
+	\item $\pdim$: Number of dimensions.
+	\item $\Li$: Lower bound for values of dimension $0 \leq i < d$.
+	\item $\Ui$: Upper bound for values of dimension $0 \leq i < d$.	
+	\end{itemize}
+\end{itemize}
+
+All logarithms to base 2.
+
+%######################################################################
+% Data structure definition, description
+%######################################################################
+\section{Data structure description}\label{sec:ds}
+
+
+%######################################################################
+% Asymptotic complexity
+%######################################################################
+\section{Asymptotic complexity}\label{sec:complexity}
+\todo{Just some ideas so far}
+
+\subsection{Sub-problems}\label{sec:complexity:subproblems}
+
+\subsubsection{Strategy2Base}\label{sec:complexity:strategy2base}
+A general question is: \todo{How much complexity do the pheet internals like the Strategy2Base stuff add?}
+
+\subsubsection{Number of blocks}\label{sec:complexity:nrblocks}
+Currently we have $\Theta\left(\log m\right)$ blocks (items are deleted and set null, but blocks are never reused or deleted).
+
+We do not need to free blocks; just reuse items
+
+\todo{Idea: If a block contains $\leq \capacity/2$ items $\neq$ nullptr, reduce the level of the block by one.}
+Then, we should have $\O{\log n}$ blocks.
+
+\subsubsection{Merge}\label{sec:complexity:merge}
+
+\subsubsection{Pivot element generation}\label{sec:complexity:pivotgeneration}
+
+\subsubsection{Partition}\label{sec:complexity:partition}
+Partitioning a block of size $k$ for one pivot element is $\O{k}$:
+\begin{itemize}
+\item Obtain pivot element or generate a new pivot element: $\O{1}$
+\item Partition $k = right - left + 1$ elements. \todo{Add pseudo-code.} Worst-case: We need to swap each item. After swapping, at least one more item is at it's final place: If we swap some item with a dead item, the dead item will be in the correct place. If we swap two non-dead items, both will be in their final place. Two dead items are never swapped (if the right is dead, just decrease right. If the left is dead, swap with the right-most non-dead item.
+\item Check if the new right-most partition has at least one element, add partition pointer: $\O{1}$ 
+\end{itemize}
+
+Partitioning a block of size $k$ recursively until the right-most partition is of size $\leq S_p$:
+
+\begin{itemize}
+\item Best case: Assume that there are no dead elements and that each partitioning step devides the input into two equal-sized partitions. Then we have
+\begin{align*}
+\sum_{i=1}^{\log k} \frac{k}{i} = \log k \cdot c
+\end{align*}
+where $c \leq 2$.
+\item Worst case: No dead elements, partitioning step devides input into left partition with exactly one element, right partition with $k-1$ elements.
+\begin{align*}
+\sum_{i=1}^{k} i = \frac{k\cdot(k+1)}{2} \in \O{k^2}
+\end{align*}
+\item Attempted to partition $\apb$ times at level $\lvl$, but right-most partition always empty (this implies that the no pivot element exists for levels $\geq \apb$). Let $k'$ be the number of items at level $\lvl$. Then, in the worst case, we partition $k-k'-1$ times (each partitioning step creates a left partition with 1 element), before partitioning $k'$ elements $\apb$ times:
+\begin{align*}
+\sum_{i=k'+1}^{k} i + \apb\cdot k' \leq \frac{\left(k-k'-1\right)\cdot\left(k-k'\right)}{2} \in \O{k^2}
+\end{align*}
+This bound is tight (the partitioning might fail for $S_p+1$ items).
+
+\item The dead tasks help reduce the complexity: each is touched only once. \todo{but how much does this help?}
+\item \todo{Can we make some assumptions about the number of dead tasks? Show that w.h.p.~the worst case does not occur?}
+\end{itemize}
+
+
+\subsection{Push}\label{sec:complexity:push}
+Basic insertion of an item is trivially $\O{1}$: create a new block if required and insert. 
+\todo{However, inserting an item may cause merging with previous blocks and thus re-partitioning.}
+
+\subsection{Pop}\label{sec:complexity:pop}
+Basic pop: $\O{S_p \cdot \log n}$ in the best case, i.e., when no partion is $>S_p$.
+
+\subsection{Steal}\label{sec:complexity:steal}
+
+\end{document}
