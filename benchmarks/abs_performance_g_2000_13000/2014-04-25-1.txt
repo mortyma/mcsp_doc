@@ -1,0 +1,27 @@
+./build/test/msp/bench/msp-bench -r 2 -n 1 --seq --strategy --strategy2 ../mcsp_doc/graphs/g_2000_13000_3_10000_42 
+test    algorithm       scheduler       nodes   edges   paths   cpus    total_time      num_dead_tasks  num_actual_tasks
+msp     Sequential Msp  SynchroneousScheduler   2000    13000   31832   1       0.08885 691     31832
+test    algorithm       scheduler       nodes   edges   paths   cpus    total_time      num_dead_tasks  num_actual_tasks
+msp     Sequential Msp  SynchroneousScheduler   2000    13000   31832   1       0.092333        691     31832
+test    algorithm       scheduler       nodes   edges   paths   cpus    total_time      num_dead_tasks  num_actual_tasks
+msp     Strategy Msp    BStrategyScheduler<DistKStrategyTaskStorage<128, Global>>       2000    13000   31832   1       0.116971        691     31832
+test    algorithm       scheduler       nodes   edges   paths   cpus    total_time      num_dead_tasks  num_actual_tasks
+msp     Strategy Msp    BStrategyScheduler<DistKStrategyTaskStorage<128, Global>>       2000    13000   31832   1       0.12508 691     31832
+test    algorithm       scheduler       nodes   edges   paths   cpus    total_time      num_dead_tasks  num_actual_tasks
+msp     Strategy2 Msp<ParetoLocalityTaskStorage>        StrategyScheduler2<Strategy2BaseTaskStorage<128>>       2000    13000   31832   1       2.34289 1346    31867
+test    algorithm       scheduler       nodes   edges   paths   cpus    total_time      num_dead_tasks  num_actual_tasks
+msp     Strategy2 Msp<ParetoLocalityTaskStorage>        StrategyScheduler2<Strategy2BaseTaskStorage<128>>       2000    13000   31832   1       2.48502 1317    31866
+
+./build/test/msp/bench/msp-bench -r 2 -n 4 --seq --strategy --strategy2 ../mcsp_doc/graphs/g_2000_13000_3_10000_42 
+test    algorithm       scheduler       nodes   edges   paths   cpus    total_time      num_dead_tasks  num_actual_tasks
+msp     Sequential Msp  SynchroneousScheduler   2000    13000   31832   1       0.087299        691     31832
+test    algorithm       scheduler       nodes   edges   paths   cpus    total_time      num_dead_tasks  num_actual_tasks
+msp     Sequential Msp  SynchroneousScheduler   2000    13000   31832   1       0.089876        691     31832
+test    algorithm       scheduler       nodes   edges   paths   cpus    total_time      num_dead_tasks  num_actual_tasks
+msp     Strategy Msp    BStrategyScheduler<DistKStrategyTaskStorage<128, Global>>       2000    13000   31832   4       0.058597        711     31691
+test    algorithm       scheduler       nodes   edges   paths   cpus    total_time      num_dead_tasks  num_actual_tasks
+msp     Strategy Msp    BStrategyScheduler<DistKStrategyTaskStorage<128, Global>>       2000    13000   31832   4       0.053905        690     31689
+test    algorithm       scheduler       nodes   edges   paths   cpus    total_time      num_dead_tasks  num_actual_tasks
+msp     Strategy2 Msp<ParetoLocalityTaskStorage>        StrategyScheduler2<Strategy2BaseTaskStorage<128>>       2000    13000   31832   4       0.365877        4267    33433
+test    algorithm       scheduler       nodes   edges   paths   cpus    total_time      num_dead_tasks  num_actual_tasks
+msp     Strategy2 Msp<ParetoLocalityTaskStorage>        StrategyScheduler2<Strategy2BaseTaskStorage<128>>       2000    13000   31832   4       0.342595        3579    33203
