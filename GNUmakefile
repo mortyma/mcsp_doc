@@ -8,6 +8,9 @@ REMOTEDIR = ~/mcsp_doc/benchmarks/
 DEST = ./benchmarks/
 SOURCE = ./graphs/
 
+
+.PHONY: all protocol
+
 all: to_mars from_mars
 	
 #saturn:
@@ -19,5 +22,8 @@ to_mars:
 
 from_mars:
 	$(RSYNC) $(RFLAGS) $(MARS):~/mcsp_doc/benchmarks/mars/ ./benchmarks/mars/
-	
 
+protocol:
+	$(MAKE) -C ./protocol/
+	
+	
