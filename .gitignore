@@ -1,6 +1,7 @@
 *.RData
 *.Rhistory
 *.backup
+protocol.tex
 *~
 *.acn
 *.acr
