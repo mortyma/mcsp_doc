@@ -1,0 +1,187 @@
+\documentclass[a4paper,10pt]{article}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{comment}
+\usepackage[utf8]{inputenc}
+\usepackage{listings}
+\usepackage[pdfborder={0 0 0}]{hyperref}
+\usepackage{spverbatim}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{comment}
+
+
+\definecolor{OliveGreen}{cmyk}{0.64,0,0.95,0.40}
+\definecolor{Gray}{gray}{0.5}
+
+\lstset{
+    language=C,
+    basicstyle=\ttfamily,
+    keywordstyle=\color{OliveGreen},
+    commentstyle=\color{Gray},
+    captionpos=b,
+    breaklines=true,
+    breakatwhitespace=false,
+    showspaces=false,
+    showtabs=false,
+    numbers=left,
+}
+
+\title{}
+\author{Martin Kalany, 0825673}
+
+\begin{document}
+
+\setkeys{Gin}{width=0.6\textwidth}
+%\maketitle
+%\tableofcontents
+%\pagebreak
+
+\section{Local}
+
+<<echo=FALSE, include=FALSE>>=
+\SweaveInput{functions.Rnw}
+@
+
+\begin{figure}
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotBenchmark(
+"../benchmarks/local/g_2000_13000_3_10000_42/strategy.dat", "../benchmarks/local/g_2000_13000_3_10000_42/strategy2.dat", xAxis="cpus", yAxis="total_time", splitBy="algorithm")
+@
+\end{center}
+\caption{Abs.\ performance over nr.\ cpus}
+\label{fig:foo}
+\end{figure}
+
+
+\begin{figure}
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotBenchmark("../benchmarks/local/g_2000_13000_3_10000_42/strategy.dat", "../benchmarks/local/g_2000_13000_3_10000_42/strategy2.dat", xAxis="cpus", yAxis="num_dead_tasks", splitBy="algorithm", legendPos="topleft")
+@
+\end{center}
+\caption{Number of dead tasks}
+\label{fig:bar}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+<<fig=TRUE, results=tex, echo=FALSE>>=
+plotBenchmark(
+"../benchmarks/local/g_2000_13000_3_10000_42/strategy.dat",
+"../benchmarks/local/g_2000_13000_3_10000_42/strategy2.dat",
+"../benchmarks/local/g_2000_13000_3_10000_42/sequential.dat",
+"../benchmarks/local/g_2000_5000_3_10000_42/strategy.dat",
+"../benchmarks/local/g_2000_5000_3_10000_42/strategy2.dat",
+"../benchmarks/local/g_2000_5000_3_10000_42/sequential.dat",
+"../benchmarks/local/g_2000_1999_3_10000_42/strategy.dat",
+"../benchmarks/local/g_2000_1999_3_10000_42/strategy2.dat",
+"../benchmarks/local/g_2000_1999_3_10000_42/sequential.dat",
+xAxis="edges", yAxis="total_time", splitBy="algorithm", legendPos="topleft")
+@
+\end{center}
+\caption{Abs.\ performance over nr.\ edges}
+\label{fig:bar}
+\end{figure}
+
+\section{Mars}
+
+
+<<echo=FALSE, include=FALSE>>=
+\SweaveInput{functions.Rnw}
+@
+
+\begin{figure}
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotBenchmark(
+"../benchmarks/mars/g_2000_13000_3_10000_42/strategy.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/strategy2.dat", xAxis="cpus", yAxis="total_time", splitBy="algorithm")
+@
+\end{center}
+\caption{Abs.\ performance over nr.\ cpus, n=2000, e=13000}
+\label{fig:foo}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotBenchmark(
+"../benchmarks/mars/g_2000_5000_3_10000_42/strategy.dat", "../benchmarks/mars/g_2000_5000_3_10000_42/strategy2.dat", xAxis="cpus", yAxis="total_time", splitBy="algorithm")
+@
+\end{center}
+\caption{Abs.\ performance over nr.\ cpus, n=2000, e=5000}
+\label{fig:foo}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotBenchmark(
+"../benchmarks/mars/g_2000_1999_3_10000_42/strategy.dat", "../benchmarks/mars/g_2000_1999_3_10000_42/strategy2.dat", xAxis="cpus", yAxis="total_time", splitBy="algorithm")
+@
+\end{center}
+\caption{Abs.\ performance over nr.\ cpus, n=2000, e=1999}
+\label{fig:foo}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotBenchmark(
+"../benchmarks/mars/g_10000_100000_3_10000_42/strategy.dat", "../benchmarks/mars/g_10000_100000_3_10000_42/strategy2.dat", xAxis="cpus", yAxis="total_time", splitBy="algorithm")
+@
+\end{center}
+\caption{Abs.\ performance over nr.\ cpus, n=10000, e=100000}
+\label{fig:foo}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotBenchmark(
+"../benchmarks/mars/g_50000_60000_3_10000_42/strategy.dat", "../benchmarks/mars/g_50000_60000_3_10000_42/strategy2.dat", xAxis="cpus", yAxis="total_time", splitBy="algorithm")
+@
+\end{center}
+\caption{Abs.\ performance over nr.\ cpus, n=50000, e=60000}
+\label{fig:foo}
+\end{figure}
+
+
+
+\section{Some more plots}
+
+\begin{figure}
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotBenchmark("../benchmarks/mars/g_2000_13000_3_10000_42/strategy.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/strategy2.dat", xAxis="cpus", yAxis="num_dead_tasks", splitBy="algorithm", legendPos="topleft")
+@
+\end{center}
+\caption{Number of dead tasks}
+\label{fig:bar}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+<<fig=TRUE, results=tex, echo=FALSE>>=
+plotBenchmark(
+"../benchmarks/mars/g_2000_13000_3_10000_42/strategy.dat",
+"../benchmarks/mars/g_2000_13000_3_10000_42/strategy2.dat",
+"../benchmarks/mars/g_2000_13000_3_10000_42/sequential.dat",
+"../benchmarks/mars/g_2000_5000_3_10000_42/strategy.dat",
+"../benchmarks/mars/g_2000_5000_3_10000_42/strategy2.dat",
+"../benchmarks/mars/g_2000_5000_3_10000_42/sequential.dat",
+"../benchmarks/mars/g_2000_1999_3_10000_42/strategy.dat",
+"../benchmarks/mars/g_2000_1999_3_10000_42/strategy2.dat",
+"../benchmarks/mars/g_2000_1999_3_10000_42/sequential.dat",
+xAxis="edges", yAxis="total_time", splitBy="algorithm", legendPos="topleft")
+@
+\end{center}
+\caption{Abs.\ performance over nr.\ edges}
+\label{fig:bar}
+\end{figure}
+
+\end{document}
+  

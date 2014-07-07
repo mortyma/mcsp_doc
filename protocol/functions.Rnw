@@ -1,0 +1,81 @@
+#lookup table for human readable description of column names
+desc <- c(
+test="test",
+algorithm="algorithm",
+scheduler="scheduler",
+nodes="#nodes",
+edges="#edges",
+paths="#paths",
+cpus="#cpus",
+total_time="time [s]",
+num_dead_tasks="#dead tasks",
+num_actual_tasks="#created tasks"
+)
+
+# create a nice plot
+plot <- function(x, y, pch, legend, xlab, ylab, legendPos, log) {
+    matplot(x,y, pch=pch, type='b', xlab=xlab, ylab=ylab, log=log)
+    legend(legendPos, legend=legend, col=pch, pch=pch)
+}
+
+#read benchmark data from files
+readDataFrom <- function(...) {
+	files <- c(...)
+	d <- NULL
+	
+	for (f in files) {
+		tmp <- read.table(f, header=TRUE, sep=",")
+		d <- rbind(d, tmp)
+	}
+	d
+}
+
+# generic function to plot benchmark data
+plotBenchmark <- function(..., xAxis, yAxis, splitBy, legendPos="bottomleft", log="") {
+   d <- readDataFrom(...)
+   # take the minimum of all runs
+   ad <- aggregate(d[[yAxis]], 
+   					list(
+   					test = d$test, 
+   					algorithm = d$algorithm, 
+   					scheduler = d$scheduler, 
+   					xAxis = d[[xAxis]]), 
+   					min)		
+   	# split 				
+    sd <- split(ad, ad[[splitBy]])
+   
+    # Add each data range to our vectors.
+    # The <<- operator affects variables in higher scopes.
+    addData <- function(p) {
+    	p <- p[with(p, order(p$xAxis)),]
+        if (nrow(p) > 0) {
+            x <<- cbind(x,p$xAxis)
+            y <<- cbind(y,p$x)
+        }
+    }
+    
+    x <- NULL
+    y <- NULL
+    sapply(sd, FUN=addData)
+	pch <- 1:length(sd)
+        
+    plot(x,y, pch, levels(ad[[splitBy]]), desc[xAxis], desc[yAxis], legendPos, log)   
+}
+
+# TODO: remove debug code
+# just load some benchmark data for testing or debugging
+strategyData <- function() {
+    d <- readDataFrom("../benchmarks/local/g_2000_13000_3_10000_42/strategy.dat", "../benchmarks/local/g_2000_13000_3_10000_42/strategy2.dat")   
+    d
+}
+
+sequentialData <- function() {
+    d <- readDataFrom("../benchmarks/local/g_2000_13000_3_10000_42/sequential.dat")   
+    d
+}
+
+multiGraphData <- function() {
+    d <- readDataFrom("../benchmarks/local/g_2000_13000_3_10000_42/sequential.dat", "../benchmarks/local/g_2000_5000_3_10000_42/sequential.dat", "../benchmarks/local/g_2000_1999_3_10000_42/sequential.dat"
+    )
+    d
+}
