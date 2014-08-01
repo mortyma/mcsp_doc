@@ -31,7 +31,7 @@ readDataFrom <- function(...) {
 }
 
 # generic function to plot benchmark data
-plotBenchmark <- function(..., xAxis, yAxis, splitBy, legendPos="bottomleft", log="") {
+plotBenchmark <- function(..., xAxis, yAxis, splitBy, legendPos="topright", log="") {
    d <- readDataFrom(...)
    # take the minimum of all runs
    ad <- aggregate(d[[yAxis]], 

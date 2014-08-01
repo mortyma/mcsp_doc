@@ -34,12 +34,10 @@
 
 \begin{document}
 
-\setkeys{Gin}{width=0.6\textwidth}
+\setkeys{Gin}{width=0.5\textwidth}
 %\maketitle
 %\tableofcontents
 %\pagebreak
-
-\section{Local}
 
 <<echo=FALSE, include=FALSE>>=
 \SweaveInput{functions.Rnw}
@@ -62,12 +60,21 @@ plotBenchmark(
 "../benchmarks/local/g_2000_13000_3_10000_42/memory_order/strategy.dat",  "../benchmarks/local/g_2000_13000_3_10000_42/memory_order/strategy2_seq_cst.dat", "../benchmarks/local/g_2000_13000_3_10000_42/memory_order/strategy2_aq_re.dat", "../benchmarks/local/g_2000_13000_3_10000_42/memory_order/strategy2_relaxed.dat", xAxis="cpus", yAxis="total_time", splitBy="algorithm")
 @
 \end{center}
-\caption{Influence of memory order}
+\caption{Influence of memory order (local)}
 \label{fig:foo}
 \end{figure}
 
+\begin{figure}
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotBenchmark(
+"../benchmarks/mars/g_2000_13000_3_10000_42/memory_order/strategy.dat",  "../benchmarks/mars/g_2000_13000_3_10000_42/memory_order/strategy2_seq_cst.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/memory_order/strategy2_aq_rel.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/memory_order/strategy2_relaxed.dat", xAxis="cpus", yAxis="total_time", splitBy="algorithm")
+@
+\end{center}
+\caption{Influence of memory order (mars)}
+\label{fig:foo}
+\end{figure}
 
-\begin{comment}
 
 \begin{figure}
 \begin{center}
@@ -194,6 +201,5 @@ xAxis="edges", yAxis="total_time", splitBy="algorithm", legendPos="topleft")
 \caption{Abs.\ performance over nr.\ edges}
 \label{fig:bar}
 \end{figure}
-\end{comment}
 \end{document}
   
