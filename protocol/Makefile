@@ -4,7 +4,7 @@ PROJECT = protocol
 
 all: $(PROJECT).pdf
 
-$(PROJECT).tex: $(PROJECT).Rnw
+$(PROJECT).tex: $(PROJECT).Rnw functions.Rnw
 	R CMD Sweave $(PROJECT).Rnw
 
 $(PROJECT).pdf: $(PROJECT).tex $(PROJECT).Rnw
