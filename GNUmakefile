@@ -24,6 +24,7 @@ from_mars:
 	$(RSYNC) $(RFLAGS) $(MARS):~/mcsp_doc/benchmarks/mars/ ./benchmarks/mars/
 
 protocol:
+	$(MAKE) clean -C ./protocol/
 	$(MAKE) -C ./protocol/
 	
 	
