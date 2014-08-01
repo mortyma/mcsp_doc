@@ -75,6 +75,21 @@ plotBenchmark(
 \label{fig:foo}
 \end{figure}
 
+\begin{figure}
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotBenchmark(
+"../benchmarks/local/g_2000_13000_3_10000_42/top/strategy.dat",  "../benchmarks/local/g_2000_13000_3_10000_42/top/strategy2_old.dat", "../benchmarks/local/g_2000_13000_3_10000_42/top/strategy2.dat", xAxis="cpus", yAxis="total_time", splitBy="algorithm")
+@
+\end{center}
+\caption{Improvement due to more efficient PLTSBlock::top (local)}
+\label{fig:foo}
+\end{figure}
+
+
+\pagebreak
+\pagebreak
+
 
 \begin{figure}
 \begin{center}
