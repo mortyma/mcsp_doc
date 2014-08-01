@@ -49,13 +49,25 @@
 \begin{center}
 <<fig=TRUE, echo=FALSE>>=
 plotBenchmark(
-"../benchmarks/local/g_2000_13000_3_10000_42/strategy.dat", "../benchmarks/local/g_2000_13000_3_10000_42/strategy2.dat", xAxis="cpus", yAxis="total_time", splitBy="algorithm")
+"../benchmarks/local/g_2000_13000_3_10000_42/strategy.dat", "../benchmarks/local/g_2000_13000_3_10000_42/strategy2.dat",  "../benchmarks/local/g_2000_13000_3_10000_42/strategy2_old.dat", "../benchmarks/local/g_2000_13000_3_10000_42/strategy2_noDeadHandling.dat", xAxis="cpus", yAxis="total_time", splitBy="algorithm")
 @
 \end{center}
 \caption{Abs.\ performance over nr.\ cpus}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotBenchmark(
+"../benchmarks/local/g_2000_13000_3_10000_42/memory_order/strategy.dat",  "../benchmarks/local/g_2000_13000_3_10000_42/memory_order/strategy2_seq_cst.dat", "../benchmarks/local/g_2000_13000_3_10000_42/memory_order/strategy2_aq_re.dat", "../benchmarks/local/g_2000_13000_3_10000_42/memory_order/strategy2_relaxed.dat", xAxis="cpus", yAxis="total_time", splitBy="algorithm")
+@
+\end{center}
+\caption{Influence of memory order}
 \label{fig:foo}
 \end{figure}
 
+
+\begin{comment}
 
 \begin{figure}
 \begin{center}
@@ -182,6 +194,6 @@ xAxis="edges", yAxis="total_time", splitBy="algorithm", legendPos="topleft")
 \caption{Abs.\ performance over nr.\ edges}
 \label{fig:bar}
 \end{figure}
-
+\end{comment}
 \end{document}
   
