@@ -9,7 +9,8 @@ paths="#paths",
 cpus="#cpus",
 total_time="time [s]",
 num_dead_tasks="#dead tasks",
-num_actual_tasks="#created tasks"
+num_actual_tasks="#created tasks",
+comment="comment"
 )
 
 # create a nice plot
@@ -36,10 +37,11 @@ plotBenchmark <- function(..., xAxis, yAxis, splitBy, legendPos="topright", log=
    # take the minimum of all runs
    ad <- aggregate(d[[yAxis]], 
    					list(
-   					test = d$test, 
+   					test = d$test,
    					algorithm = d$algorithm, 
    					scheduler = d$scheduler, 
-   					xAxis = d[[xAxis]]), 
+   					comment = d$comment,
+   					xAxis = d[[xAxis]]),
    					min)		
    	# split 				
     sd <- split(ad, ad[[splitBy]])
@@ -59,7 +61,7 @@ plotBenchmark <- function(..., xAxis, yAxis, splitBy, legendPos="topright", log=
     sapply(sd, FUN=addData)
 	pch <- 1:length(sd)
         
-    plot(x,y, pch, levels(ad[[splitBy]]), desc[xAxis], desc[yAxis], legendPos, log)   
+    plot(x, y, pch, levels(ad[[splitBy]]), desc[xAxis], desc[yAxis], legendPos, log)   
 }
 
 # TODO: remove debug code
