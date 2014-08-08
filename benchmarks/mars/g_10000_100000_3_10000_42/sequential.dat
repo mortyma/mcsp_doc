@@ -1,4 +1,0 @@
-total_time,cpus,edges,scheduler,date,paths,num_actual_tasks,algorithm,num_dead_tasks,hostname,test,nodes
-6.62254,1,100000,SynchroneousScheduler,2014-07-07,336977,336977,Sequential Msp,11090,mars,msp,10000
-6.393,1,100000,SynchroneousScheduler,2014-07-07,336977,336977,Sequential Msp,11090,mars,msp,10000
-6.16767,1,100000,SynchroneousScheduler,2014-07-07,336977,336977,Sequential Msp,11090,mars,msp,10000
