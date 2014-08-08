@@ -47,11 +47,46 @@
 \begin{center}
 <<fig=TRUE, echo=FALSE>>=
 plotBenchmark(
-"../benchmarks/local/foo/foo.dat", "../benchmarks/local/foo/bar.dat",  "../benchmarks/local/foo/baz.dat", xAxis="cpus", yAxis="total_time", splitBy="comment")
+"../benchmarks/local/g_2000_13000_3_10000_42/baseline/strategy.dat", "../benchmarks/local/g_2000_13000_3_10000_42/baseline/strategy2.dat", xAxis="cpus", yAxis="total_time", splitBy="algorithm")
 @
 \end{center}
 \caption{Abs.\ performance over nr.\ cpus}
 \end{figure}
 
+\begin{figure}
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotBenchmark(
+"../benchmarks/local/g_2000_13000_3_10000_42/mo_seq_cst/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/mo_aq_rel/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/mo_relaxed/strategy2.dat", xAxis="cpus", yAxis="total_time", splitBy="comment")
+@
+\end{center}
+\caption{Influence of memory order}
+\end{figure}
+
+
+\begin{figure}
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotBenchmark(
+"../benchmarks/local/g_2000_13000_3_10000_42/max_partition_8/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/max_partition_16/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/max_partition_32/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/max_partition_64/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/max_partition_128/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/max_partition_256/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/max_partition_512/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/max_partition_1024/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/max_partition_4096/strategy2.dat",
+"../benchmarks/local/g_2000_13000_3_10000_42/baseline/strategy2.dat", xAxis="cpus", yAxis="total_time", splitBy="comment")
+@
+\end{center}
+\caption{Influence of MAX\_PARTITION\_SIZE}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotBenchmark(
+"../benchmarks/local/g_2000_13000_3_10000_42/max_partition_128/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/baseline/strategy.dat", xAxis="cpus", yAxis="total_time", splitBy="algorithm")
+@
+\end{center}
+\caption{Strategy2 with MAX\_PARTITION\_SIZE=128 vs.~Strategy}
+\end{figure}
+
+
+
 \end{document}
+
   

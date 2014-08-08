@@ -1,0 +1,11 @@
+total_time,comment,cpus,edges,scheduler,date,paths,num_actual_tasks,algorithm,num_dead_tasks,hostname,test,nodes
+0.090233,"baseline, 2014-08-01",1,13000,SynchroneousScheduler,2014-08-08,31832,31832,Sequential Msp,691,martin-par,msp,2000
+0.087225,"baseline, 2014-08-01",1,13000,SynchroneousScheduler,2014-08-08,31832,31832,Sequential Msp,691,martin-par,msp,2000
+0.087082,"baseline, 2014-08-01",1,13000,SynchroneousScheduler,2014-08-08,31832,31832,Sequential Msp,691,martin-par,msp,2000
+0.086859,"baseline, 2014-08-01",1,13000,SynchroneousScheduler,2014-08-08,31832,31832,Sequential Msp,691,martin-par,msp,2000
+0.087321,"baseline, 2014-08-01",1,13000,SynchroneousScheduler,2014-08-08,31832,31832,Sequential Msp,691,martin-par,msp,2000
+0.08884,"baseline, 2014-08-01",1,13000,SynchroneousScheduler,2014-08-08,31832,31832,Sequential Msp,691,martin-par,msp,2000
+0.087234,"baseline, 2014-08-01",1,13000,SynchroneousScheduler,2014-08-08,31832,31832,Sequential Msp,691,martin-par,msp,2000
+0.087531,"baseline, 2014-08-01",1,13000,SynchroneousScheduler,2014-08-08,31832,31832,Sequential Msp,691,martin-par,msp,2000
+0.08751,"baseline, 2014-08-01",1,13000,SynchroneousScheduler,2014-08-08,31832,31832,Sequential Msp,691,martin-par,msp,2000
+0.087155,"baseline, 2014-08-01",1,13000,SynchroneousScheduler,2014-08-08,31832,31832,Sequential Msp,691,martin-par,msp,2000
