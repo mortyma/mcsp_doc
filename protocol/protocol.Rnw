@@ -47,10 +47,20 @@
 \begin{center}
 <<fig=TRUE, echo=FALSE>>=
 plotBenchmark(
+"../benchmarks/mars/g_2000_13000_3_10000_42/strategy.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/s2klsm.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/s2lsm.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/mo_relaxed/strategy2.dat", xAxis="cpus", yAxis="total_time", splitBy="algorithm")
+@
+\end{center}
+\caption{Abs.\ performance over nr.\ cpus (g\_2000\_13000\_3\_10000\_42)}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotBenchmark(
 "../benchmarks/local/g_2000_13000_3_10000_42/baseline/strategy.dat", "../benchmarks/local/g_2000_13000_3_10000_42/baseline/strategy2.dat", xAxis="cpus", yAxis="total_time", splitBy="algorithm")
 @
 \end{center}
-\caption{Abs.\ performance over nr.\ cpus}
+\caption{Abs.\ performance over nr.\ cpus (g\_2000\_13000\_3\_10000\_42)}
 \end{figure}
 
 \begin{figure}
@@ -60,9 +70,28 @@ plotBenchmark(
 "../benchmarks/local/g_2000_13000_3_10000_42/mo_seq_cst/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/mo_aq_rel/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/mo_relaxed/strategy2.dat", xAxis="cpus", yAxis="total_time", splitBy="comment")
 @
 \end{center}
-\caption{Influence of memory order}
+\caption{Influence of memory order (g\_2000\_13000\_3\_10000\_42)}
 \end{figure}
 
+\begin{figure}
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotBenchmark(
+"../benchmarks/mars/g_2000_13000_3_10000_42/mo_seq_cst/strategy2.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/mo_aq_rel/strategy2.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/mo_relaxed/strategy2.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/strategy.dat", xAxis="cpus", yAxis="total_time", splitBy="comment")
+@
+\end{center}
+\caption{Influence of memory order (g\_2000\_13000\_3\_10000\_42)}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotOverCpus(
+"../benchmarks/mars/g_2000_13000_3_10000_42/mo_seq_cst/strategy2.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/mo_aq_rel/strategy2.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/mo_relaxed/strategy2.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/strategy.dat", yAxis="total_time", splitBy="comment")
+@
+\end{center}
+\caption{Influence of memory order (g\_2000\_13000\_3\_10000\_42)}
+\end{figure}
 
 \begin{figure}
 \begin{center}
@@ -72,7 +101,7 @@ plotBenchmark(
 "../benchmarks/local/g_2000_13000_3_10000_42/baseline/strategy2.dat", xAxis="cpus", yAxis="total_time", splitBy="comment")
 @
 \end{center}
-\caption{Influence of MAX\_PARTITION\_SIZE}
+\caption{Influence of MAX\_PARTITION\_SIZE (g\_2000\_13000\_3\_10000\_42)}
 \end{figure}
 
 \begin{figure}
@@ -82,8 +111,9 @@ plotBenchmark(
 "../benchmarks/local/g_2000_13000_3_10000_42/max_partition_128/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/baseline/strategy.dat", xAxis="cpus", yAxis="total_time", splitBy="algorithm")
 @
 \end{center}
-\caption{Strategy2 with MAX\_PARTITION\_SIZE=128 vs.~Strategy}
+\caption{Strategy2 with MAX\_PARTITION\_SIZE=128 vs.~Strategy (g\_2000\_13000\_3\_10000\_42)}
 \end{figure}
+
 
 
 
