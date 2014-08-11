@@ -79,16 +79,6 @@ plotBenchmark(
 \begin{center}
 <<fig=TRUE, echo=FALSE>>=
 plotBenchmark(
-"../benchmarks/local/g_2000_13000_3_10000_42/mo_seq_cst/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/mo_aq_rel/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/mo_relaxed/strategy2.dat", xAxis="cpus", yAxis="total_time", splitBy="comment")
-@
-\end{center}
-\caption{Influence of memory order (g\_2000\_13000\_3\_10000\_42)}
-\end{figure}
-
-\begin{figure}
-\begin{center}
-<<fig=TRUE, echo=FALSE>>=
-plotBenchmark(
 "../benchmarks/mars/g_2000_13000_3_10000_42/mo_seq_cst/strategy2.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/mo_aq_rel/strategy2.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/mo_relaxed/strategy2.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/strategy.dat", xAxis="cpus", yAxis="total_time", splitBy="comment")
 @
 \end{center}
