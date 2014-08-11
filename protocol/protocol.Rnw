@@ -43,11 +43,23 @@
 \SweaveInput{functions.Rnw}
 @
 
+
 \begin{figure}
 \begin{center}
 <<fig=TRUE, echo=FALSE>>=
 plotBenchmark(
-"../benchmarks/mars/g_2000_13000_3_10000_42/strategy.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/s2klsm.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/s2lsm.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/mo_relaxed/strategy2.dat", xAxis="cpus", yAxis="total_time", splitBy="algorithm")
+"../benchmarks/mars/g_2000_13000_3_10000_42/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/s2klsm.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/s2lsm.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/improved_put/s2pareto.dat", xAxis="cpus", yAxis="total_time", splitBy="comment")
+@
+\end{center}
+\caption{Improved PLTSBlock::put (g\_2000\_13000\_3\_10000\_42)}
+\end{figure}
+
+
+\begin{figure}
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotBenchmark(
+"../benchmarks/mars/g_2000_13000_3_10000_42/strategy.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/s2klsm.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/s2lsm.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/s2pareto.dat", xAxis="cpus", yAxis="total_time", splitBy="algorithm")
 @
 \end{center}
 \caption{Abs.\ performance over nr.\ cpus (g\_2000\_13000\_3\_10000\_42)}
