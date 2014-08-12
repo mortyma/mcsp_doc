@@ -188,6 +188,39 @@ plotBenchmark(
 \begin{figure}
 \begin{center}
 <<fig=TRUE, echo=FALSE>>=
+plotOverCpus("../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/16/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/32/s2pareto.dat",
+"../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/64/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/128/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/256/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/512/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/1024/s2pareto.dat",
+yAxis="total_time", splitBy="comment", from=1, to=3)
+@
+\end{center}
+\caption{Influence of MAX\_PARTITION\_SIZE (g\_2000\_13000\_3\_10000\_42)}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotOverCpus("../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/16/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/32/s2pareto.dat",
+"../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/64/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/128/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/256/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/512/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/1024/s2pareto.dat",
+yAxis="total_time", splitBy="comment", from=4, to=7)
+@
+\end{center}
+\caption{Influence of MAX\_PARTITION\_SIZE (g\_2000\_13000\_3\_10000\_42)}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotOverCpus("../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/16/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/32/s2pareto.dat",
+"../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/64/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/128/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/256/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/512/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/1024/s2pareto.dat",
+yAxis="total_time", splitBy="comment", from=8, to=80)
+@
+\end{center}
+\caption{Influence of MAX\_PARTITION\_SIZE (g\_2000\_13000\_3\_10000\_42)}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
 plotBenchmark(
 "../benchmarks/local/g_2000_13000_3_10000_42/max_partition_128/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/baseline/strategy.dat", xAxis="cpus", yAxis="total_time", splitBy="algorithm")
 @
