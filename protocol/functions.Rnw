@@ -94,3 +94,16 @@ plotOverCpus <- function(..., yAxis, splitBy, legendPos="topright", log="", from
         
     plot(x, y, pch, levels(ad[[splitBy]]), desc[xAxis], desc[yAxis], legendPos, log)   
 }
+
+plotPerformanceVariance <- function(file, from=1, to=80) {
+    d <- readDataFrom(file)
+    # only use data sets where #cpus >= from and <= to
+    fd <- subset(d, d$cpus >= from & d$cpus <= to)
+    
+    # we only need two columns of the data
+    ad <- cbind(fd$cpus, fd$total_time)
+    
+    sd <- split(ad[,2], ad[,1])
+    
+    boxplot(sd)
+}
