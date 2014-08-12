@@ -47,7 +47,7 @@
 \begin{center}
 <<fig=TRUE, echo=FALSE>>=
 plotPerformanceVariance(
-"../benchmarks/mars/g_2000_13000_3_10000_42/with_lincomb/s2pareto.dat", from=1, to=4)
+"../benchmarks/mars/g_2000_13000_3_10000_42/with_lincomb/s2pareto.dat", from=1, to=3)
 @
 \end{center}
 \caption{Performance with linear combination in Strategy2TaskStrategy::prioritize (g\_2000\_13000\_3\_10000\_42)}
@@ -67,7 +67,7 @@ plotPerformanceVariance(
 \begin{center}
 <<fig=TRUE, echo=FALSE>>=
 plotPerformanceVariance(
-"../benchmarks/mars/g_2000_13000_3_10000_42/without_lincomb/s2pareto.dat", from=1, to=4)
+"../benchmarks/mars/g_2000_13000_3_10000_42/without_lincomb/s2pareto.dat", from=1, to=3)
 @
 \end{center}
 \caption{Performance without linear combination in Strategy2TaskStrategy::prioritize (g\_2000\_13000\_3\_10000\_42)}
@@ -91,6 +91,16 @@ plotOverCpus(
 @
 \end{center}
 \caption{Influence of linear combination in Strategy2TaskStrategy::prioritize; min over 10 runs (g\_2000\_13000\_3\_10000\_42)}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotOverCpus(
+"../benchmarks/mars/g_2000_13000_3_10000_42/with_lincomb/s2pareto.dat","../benchmarks/mars/g_2000_13000_3_10000_42/without_lincomb/s2pareto.dat", yAxis="total_time", splitBy="comment", aggFun=mean)
+@
+\end{center}
+\caption{Influence of linear combination in Strategy2TaskStrategy::prioritize; avg over 10 runs (g\_2000\_13000\_3\_10000\_42)}
 \end{figure}
 
 \begin{figure}

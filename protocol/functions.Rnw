@@ -32,17 +32,17 @@ readDataFrom <- function(...) {
 }
 
 # generic function to plot benchmark data
-plotBenchmark <- function(..., xAxis, yAxis, splitBy, legendPos="topright", log="") {
+plotBenchmark <- function(..., xAxis, yAxis, splitBy, legendPos="topright", log="", aggFun=min) {
    d <- readDataFrom(...)
     # take the minimum of all runs
     ad <- aggregate(d[[yAxis]], 
    					list(
-   					test = d$test,
-   					algorithm = d$algorithm, 
-   					scheduler = d$scheduler, 
-   					comment = d$comment,
-   					xAxis = d[[xAxis]]),
-   					min)		
+                        test = d$test,
+                        algorithm = d$algorithm, 
+                        scheduler = d$scheduler, 
+                        comment = d$comment,
+                        xAxis = d[[xAxis]]),
+   					aggFun)		
    	# split 				
     sd <- split(ad, ad[[splitBy]])
    
@@ -64,12 +64,19 @@ plotBenchmark <- function(..., xAxis, yAxis, splitBy, legendPos="topright", log=
     plot(x, y, pch, levels(ad[[splitBy]]), desc[xAxis], desc[yAxis], legendPos, log)   
 }
 
-plotOverCpus <- function(..., yAxis, splitBy, legendPos="topright", log="", from=1, to=80) {
+plotOverCpus <- function(..., yAxis, splitBy, legendPos="topright", log="", from=1, to=80, aggFun=min) {
     d <- readDataFrom(...)
     xAxis="cpus"
     
     # take the minimum of all runs
-    ad <- aggregate(d[[yAxis]], list(test = d$test, algorithm = d$algorithm, scheduler = d$scheduler, comment = d$comment, xAxis = d[[xAxis]]), min)       
+    ad <- aggregate(d[[yAxis]], 
+                    list(
+                        test = d$test, 
+                        algorithm = d$algorithm, 
+                        scheduler = d$scheduler, 
+                        comment = d$comment, 
+                        xAxis = d[[xAxis]]), 
+                    aggFun)       
     
     # only use data sets where #cpus >= from and <= to
     fd <- subset(ad, ad$xAxis >= from & ad$xAxis <= to)
