@@ -1,3 +1,6 @@
+library(ggplot2)
+
+
 #lookup table for human readable description of column names
 desc <- c(
 test="test",
@@ -104,13 +107,11 @@ plotOverCpus <- function(..., yAxis, splitBy, legendPos="topright", log="", from
 
 plotPerformanceVariance <- function(file, from=1, to=80) {
     d <- readDataFrom(file)
+    
     # only use data sets where #cpus >= from and <= to
     fd <- subset(d, d$cpus >= from & d$cpus <= to)
-    
-    # we only need two columns of the data
-    ad <- cbind(fd$cpus, fd$total_time)
-    
-    sd <- split(ad[,2], ad[,1])
-    
-    boxplot(sd)
-}
+
+    # create the plot
+    p <- ggplot(fd, aes(factor(cpus), total_time)) + xlab(desc["cpus"]) + ylab(desc["total_time"])
+    p + geom_boxplot()
+} 
