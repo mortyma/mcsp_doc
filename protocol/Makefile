@@ -12,4 +12,6 @@ $(PROJECT).pdf: $(PROJECT).tex $(PROJECT).Rnw
 
 clean:
 	latexmk -CA
-	rm protocol.tex
+	rm -f protocol.tex
+	rm -f *.pdf
+	rm -f *.backup
