@@ -1,20 +1,40 @@
-\documentclass[a4paper,10pt]{article}
+\documentclass[a4paper,12pt]{article}
+\usepackage[utf8]{inputenc}
 
+\usepackage{comment}
+\usepackage{hyperref}
+\usepackage{cite}
+%page boarders
+\usepackage[vmargin=3cm, hmargin=3cm]{geometry}
+\usepackage{float}
+\floatstyle{plaintop}
+\usepackage{paralist} %compactitem
+\usepackage{fixltx2e} %some latex fixes
+\usepackage{microtype} %Subliminal refinements towards typographical perfection
+\setlength{\emergencystretch}{2em}
 \usepackage{amsmath}
 \usepackage{amssymb}
-\usepackage[usenames,dvipsnames]{color}
-\usepackage{comment}
-\usepackage[utf8]{inputenc}
-\usepackage{listings}
-\usepackage[pdfborder={0 0 0}]{hyperref}
-\usepackage{spverbatim}
+\usepackage{amsthm}
+\usepackage{mathrsfs} %Support use of the Raph Smith’s Formal Script font in mathematics
+\usepackage[sc]{mathpazo} %mathematical fonts
+\usepackage{amsfonts}
 \usepackage{booktabs}
+\usepackage[margin=10pt, font=small, labelfont=bf]{caption}
+\usepackage{listings}
 \usepackage{graphicx}
-\usepackage{comment}
+\usepackage{color}
+\newcommand\todo[1]{\textcolor{red}{TODO: #1}}
+\newcommand\load{L_{\mathrm{max}}}
+\newcommand\numberthis{\addtocounter{equation}{1}\tag{\theequation}}
+% within an align* environment, number and label the equation. #1 is the label text to be appended to eqn:
+\newcommand\neqn[1]{\numberthis\label{eqn:#1}}
 
-
-\definecolor{OliveGreen}{cmyk}{0.64,0,0.95,0.40}
-\definecolor{Gray}{gray}{0.5}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\newtheorem{theorem}{Theorem}
+\newtheorem{assumption}{Assumption}
+\newtheorem{invariant}{Invariant}
+\newtheorem{definition}{Definition}
 
 \lstset{
     language=C,
@@ -29,19 +49,98 @@
     numbers=left,
 }
 
-\title{}
-\author{Martin Kalany, 0825673}
+\title{A multi-criteria priority queue for the Pheet task scheduling framework\\
+\normalsize Technical report for \\``Project in Software Engineering \& Internet Computing''
+}
+\author{Martin Kalany, 0825673\\
+Vienna University of Technology}
 
 \begin{document}
 
-\setkeys{Gin}{width=0.5\textwidth}
-%\maketitle
-%\tableofcontents
-%\pagebreak
+\maketitle
 
+%scale factor for graphs
+\setkeys{Gin}{width=0.5\textwidth}
+
+%R functions for plot generation
 <<echo=FALSE, include=FALSE>>=
 \SweaveInput{functions.Rnw}
 @
+
+\begin{abstract}
+\cite{Wimmer14} \todo{abstract}
+\end{abstract}
+
+\pagebreak
+
+%TODO
+%\tableofcontents
+
+
+\section{Introduction} \label{sec:intro}
+% explain the idea of this work in a couple of sentences. 
+Pheet\footnote{\url{www.pheet.org}} 
+
+
+\subsection{Motivation} \label{sec:intro:motivation}
+% Informally introduce shortest path
+The problem of finding a shortest path between two nodes in a graph is a classical problem in computer science with numerous practical applications, such as finding the quickest route from location A to location B.
+% Introduce the problem of mcsp
+While the \emph{shortest-path problem} minimizes for a single criteria, e.g., the travel time, in practical applications one often wants to optimize multiple - and possibly conflicting - objectives:
+When searching for a route from A to B, we may want to minimize the travel time as well as toll costs.
+In such a setting, we usually cannot give a single best solution anymore. 
+Instead, we can give several reasonable solutions: 
+The fastest route will usually use highways, thus increasing the toll costs, while a slightly slower route may reduce the toll costs by avoiding highways. 
+Problems like this can be modeled as \emph{multi-criteria shortest path} (MCSP) problems, where we are interested in all optimal alternatives, i.e., in routes that are \emph{Pareto-optimal}. 
+A route from A to B is Pareto-optimal if there is no other route with less or equal cost for each of the $d$ criteria.
+
+% Applications
+Apart from the problem of finding an optimal route in a road map as outlined above, the MCSP problem has numerous outer applications, such as routing in multimedia networks \cite{ClimacoCP03} \todo{more applications?}
+
+% Hardness of the problem, reason for parallelization
+Note that the graph instances resulting from modeling practical problems are potentially very large. 
+While the MCSP-problem is NP-hard in general \cite{GareyJ79}, it was shown that the problem is feasible for many practically relevant instances \cite{Muller-HannemannW01}.
+However, due to the potentially very large graph instances resulting from modeling e.g., road or railway networks, the computational cost is significant even if a small number of criteria is to be optimized \cite{GuerrieroM01}.
+Guerriero and Musmanno \cite{GuerrieroM01} thus suggest that parallel computing might help to design efficient solution methods. 
+
+% Sanders, Erb: first parallel MCSP algo, but mostly for d=2
+To the best of our knowledge, Sanders and Mandow \cite{SM13} published the first proposal of a parallel algorithm for the MCSP problem by extending Dijkstra's classical algorithm \cite{Dijkstra59}.
+Their approach relies on a so called \emph{Pareto queue}, a multi-dimensional generalization of a priority queue. 
+While they give a high level description of the algorithm for arbitrary $d \geq 2$ and a detailed description of the bi-criteria case (which was further engineered by Erb \cite{Erb13}), they also state that efficient priority queues for $d\geq3$ are not yet known.
+
+% Our objective/idea
+\todo{If we introduce pheet first, we can give a clear statement of what our task was here.}
+
+\subsection{Outline} \label{sec:intro:outline}
+
+
+
+
+\section{Definitions and notation} \label{sec:definitions}
+% More formally
+
+% Define single-source shortest path
+More formally, in a \emph{single-source shortest path problem}, given a weighted directed graph $G=(V,E)$ (where $V$ is the set of nodes, $E$ is the set of directed edges and $w: E \rightarrow \mathcal{R}$ is the weight function), we want to compute a shortest path from the source node $s \in V$ to any node $v \in V$ where the weight $w(p)$ of a path $p = \langle v_0, v_1,\dots,v_k \rangle$ is defined as $w(p) = \sum_{i=1}^{k}w(v_{i-1}, v_i)$.
+\begin{definition}[Single-source shortest path]
+
+\end{definition}
+
+
+
+
+\subsection{Pheet} \label{sec:pheet}
+
+\section{Multi-criteria shortest path} \label{sec:mcsp}
+\todo{Problem statement, implementation}
+
+\section{Multi-criteria priority queue} \label{sec:mcpq}
+\todo{Description and analysis of: virtual array, log-structured list, put/pop, top, \dots}
+
+\section{Performance evaluation} \label{sec:performance}
+
+\section{Conclusion} \label{sec:conclusion}
+
+\section{Acknowledgements} \label{sec:ack}
 
 \begin{figure}
 \begin{center}
@@ -87,7 +186,7 @@ plotPerformanceVariance(
 \begin{center}
 <<fig=TRUE, echo=FALSE>>=
 plotOverCpus(
-"../benchmarks/mars/g_2000_13000_3_10000_42/with_lincomb/s2pareto.dat","../benchmarks/mars/g_2000_13000_3_10000_42/without_lincomb/s2pareto.dat", yAxis="total_time", splitBy="comment")
+"../benchmarks/mars/g_2000_13000_3_10000_42/with_lincomb/s2pareto.dat","../benchmarks/mars/g_2000_13000_3_10000_42/without_lincomb/s2pareto.dat", yAxis="total_time", splitBy="comment", from=8, to=80)
 @
 \end{center}
 \caption{Influence of linear combination in Strategy2TaskStrategy::prioritize; min over 10 runs (g\_2000\_13000\_3\_10000\_42)}
@@ -167,8 +266,7 @@ plotOverCpus(
 \begin{figure}
 \begin{center}
 <<fig=TRUE, echo=FALSE>>=
-plotOverCpus(
-"../benchmarks/mars/g_2000_13000_3_10000_42/mo_seq_cst/strategy2.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/mo_aq_rel/strategy2.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/mo_relaxed/strategy2.dat", yAxis="total_time", splitBy="comment", from=4, to=80)
+plotOverCpus("../benchmarks/mars/g_2000_13000_3_10000_42/mo_seq_cst/strategy2.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/mo_aq_rel/strategy2.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/mo_relaxed/strategy2.dat", yAxis="total_time", splitBy="comment", from=4, to=80)
 @
 \end{center}
 \caption{Influence of memory order, \#cpus=4-80  (g\_2000\_13000\_3\_10000\_42)}
@@ -221,16 +319,15 @@ yAxis="total_time", splitBy="comment", from=8, to=80)
 \begin{figure}
 \begin{center}
 <<fig=TRUE, echo=FALSE>>=
-plotBenchmark(
-"../benchmarks/local/g_2000_13000_3_10000_42/max_partition_128/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/baseline/strategy.dat", xAxis="cpus", yAxis="total_time", splitBy="algorithm")
+plotBenchmark("../benchmarks/local/g_2000_13000_3_10000_42/max_partition_128/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/baseline/strategy.dat", xAxis="cpus", yAxis="total_time", splitBy="algorithm")
 @
 \end{center}
 \caption{Strategy2 with MAX\_PARTITION\_SIZE=128 vs.~Strategy (g\_2000\_13000\_3\_10000\_42)}
 \end{figure}
 
-
-
-
+%bibliography
+\bibliographystyle{acm}
+\bibliography{sources} 
 \end{document}
 
   
