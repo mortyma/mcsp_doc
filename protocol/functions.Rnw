@@ -36,42 +36,32 @@ readDataFrom <- function(...) {
 
 # generic function to plot benchmark data
 plotBenchmark <- function(..., xAxis, yAxis, splitBy, legendPos="topright", log="", aggFun=min) {
-   d <- readDataFrom(...)
-    # take the minimum of all runs
+    d <- readDataFrom(...)
+    
+    # aggregate over all runs
     ad <- aggregate(d[[yAxis]], 
-   					list(
-                        test = d$test,
+                    list(
+                        test = d$test, 
                         algorithm = d$algorithm, 
                         scheduler = d$scheduler, 
-                        comment = d$comment,
-                        xAxis = d[[xAxis]]),
-   					aggFun)		
-   	# split 				
-    sd <- split(ad, ad[[splitBy]])
-   
-    # Add each data range to our vectors.
-    # The <<- operator affects variables in higher scopes.
-    addData <- function(p) {
-    	p <- p[with(p, order(p$xAxis)),]
-        if (nrow(p) > 0) {
-            x <<- cbind(x,p$xAxis)
-            y <<- cbind(y,p$x)
-        }
-    }
-    
-    x <- NULL
-    y <- NULL
-    sapply(sd, FUN=addData)
-	pch <- 1:length(sd)
+                        comment = d$comment, 
+                        xAxis = d[[xAxis]]), 
+                    aggFun)       
         
-    plot(x, y, pch, levels(ad[[splitBy]]), desc[xAxis], desc[yAxis], legendPos, log)   
+    # generate the plot
+    p <- ggplot(data=ad, aes(xAxis, x, color=comment, shape=comment)) + geom_line() + geom_point()
+    # axis labels
+    p <- p + xlab(desc[xAxis]) + ylab(desc[yAxis])
+   
+    p
 }
 
-plotOverCpus <- function(..., yAxis, splitBy, legendPos="topright", log="", from=1, to=80, aggFun=min) {
+plotOverCpus <- function(..., yAxis, splitBy, legendPos="topright", log="", from=1, to=80, aggFun=min) 
+{
     d <- readDataFrom(...)
     xAxis="cpus"
     
-    # take the minimum of all runs
+    # aggregate over all runs
     ad <- aggregate(d[[yAxis]], 
                     list(
                         test = d$test, 
@@ -84,25 +74,12 @@ plotOverCpus <- function(..., yAxis, splitBy, legendPos="topright", log="", from
     # only use data sets where #cpus >= from and <= to
     fd <- subset(ad, ad$xAxis >= from & ad$xAxis <= to)
     
-    # split                 
-    sd <- split(fd, fd[[splitBy]])
+    # generate the plot
+    p <- ggplot(data=fd, aes(xAxis, x, color=comment, shape=comment)) + geom_line() + geom_point()
+    # axis labels
+    p <- p + xlab(desc[xAxis]) + ylab(desc[yAxis])
    
-    # Add each data range to our vectors.
-    # The <<- operator affects variables in higher scopes.
-    addData <- function(p) {
-        p <- p[with(p, order(p$xAxis)),]
-        if (nrow(p) > 0) {
-            x <<- cbind(x,p$xAxis)
-            y <<- cbind(y,p$x)
-        }
-    }
-    
-    x <- NULL
-    y <- NULL
-    sapply(sd, FUN=addData)
-    pch <- 1:length(sd)
-        
-    plot(x, y, pch, levels(ad[[splitBy]]), desc[xAxis], desc[yAxis], legendPos, log)   
+    p
 }
 
 plotPerformanceVariance <- function(file, from=1, to=80) {
