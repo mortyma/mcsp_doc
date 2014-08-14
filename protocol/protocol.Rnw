@@ -29,12 +29,15 @@
 % within an align* environment, number and label the equation. #1 is the label text to be appended to eqn:
 \newcommand\neqn[1]{\numberthis\label{eqn:#1}}
 
+% theorem, lemma, ...
 \newtheorem{lemma}{Lemma}
 \newtheorem{corollary}{Corollary}
 \newtheorem{theorem}{Theorem}
 \newtheorem{assumption}{Assumption}
-\newtheorem{invariant}{Invariant}
 \newtheorem{definition}{Definition}
+
+% vectors
+\newcommand{\vect}[1]{\vec{#1}}
 
 \lstset{
     language=C,
@@ -86,7 +89,7 @@ Pheet\footnote{\url{www.pheet.org}}
 % Informally introduce shortest path
 The problem of finding a shortest path between two nodes in a graph is a classical problem in computer science with numerous practical applications, such as finding the quickest route from location A to location B.
 % Introduce the problem of mcsp
-While the \emph{shortest-path problem} minimizes for a single criteria, e.g., the travel time, in practical applications one often wants to optimize multiple - and possibly conflicting - objectives:
+While the \emph{shortest-path problem} minimizes for a single criteria, e.g., the travel time, in practical applications one often wants to optimize multiple -- and possibly conflicting -- objectives:
 When searching for a route from A to B, we may want to minimize the travel time as well as toll costs.
 In such a setting, we usually cannot give a single best solution anymore. 
 Instead, we can give several reasonable solutions: 
@@ -114,21 +117,52 @@ While they give a high level description of the algorithm for arbitrary $d \geq 
 \subsection{Outline} \label{sec:intro:outline}
 
 
-
-
-\section{Definitions and notation} \label{sec:definitions}
-% More formally
+\section{Definitions and notation} \label{sec:defs}
+We provide definitions for variations of the shortest path problems considered in this report. 
+The classic text book by Cormen et al.~\cite{CLRS01} provides a more detailed introduction to basic shortest path problems and algorithms.
+\todo{refs for mcsp, multi-graphs...}
 
 % Define single-source shortest path
-More formally, in a \emph{single-source shortest path problem}, given a weighted directed graph $G=(V,E)$ (where $V$ is the set of nodes, $E$ is the set of directed edges and $w: E \rightarrow \mathcal{R}$ is the weight function), we want to compute a shortest path from the source node $s \in V$ to any node $v \in V$ where the weight $w(p)$ of a path $p = \langle v_0, v_1,\dots,v_k \rangle$ is defined as $w(p) = \sum_{i=1}^{k}w(v_{i-1}, v_i)$.
-\begin{definition}[Single-source shortest path]
+\subsection{Shortest path problems} \label{sec:defs:sssp}
+We are given a weighted directed graph $G=(V,A)$, where $V= \{v_1, v_2, \dots, v_n\}$ is a finite set of nodes, $A \subseteq V \times V$ is the set of arcs (directed edges) and $c: A \rightarrow \mathbb{N}$ is the cost or weight function. 
+Let $p = \langle v_0, a_1, v_1, a_2, \dots,a_k, v_k \rangle$ be a path from $v_0$ to $v_k$ in $G$ and $P$ be the set of all paths in $G$.
+We define the weight $w(p)$ of a path $p$ as 
+\begin{align*}
+w: P &\rightarrow \mathbb{N} \\
+p &\mapsto w(p) = \sum_{i=1}^{k}c(a_i) \quad , \neqn{eg:foo:1}
+\end{align*}
+i.e., the sum of costs all the arcs in the path $p$.
 
-\end{definition}
+\subsection{Dominance relation} \label{sec:defs:domination}
+Let $\vect{x}$ and $\vect{y}$ be two vectors of dimension $d$. 
+We say that $\vect{x}$, $\vect{x} \neq \vect{y}$ \emph{dominates} $\vect{y}$ ($\vect{x} \prec \vect{y}$) -- or equivalently, $\vect{y}$ \emph{is dominated by} $\vect{x}$ -- if and only if
+\begin{align}
+\forall j \in \{1,\dots, d\}: w_j(x) \leq w_j(y) \quad .
+\end{align}
+Note that the dominance relation ($\prec$) does not define a total ordering in $\mathbb{R}^d$ for $d\geq 2$.
+Thus, there exist vectors $\vect{x}, \vect{y} \in \mathbb{N}^d$, $\vect{x} \neq \vect{y}$ for which neither $\vect{x} \prec \vect{y}$ nor $\vect{y} \prec \vect{x}$ holds.
 
+\subsection{Multi-criteria shortest path (MCSP)} \label{sec:defs:mcsp}
+MCSP problems generalize shortest path problems w.r.t.~the weight function $c$, which is extended to $d$-dimensional vectors, i.e., $\vect{c}: A \rightarrow \mathbb{N}^d$ and
+\begin{align*}
+\vect{w}: P &\rightarrow \mathbb{N}^d \\
+p &\mapsto \vect{w}(p) = (w_1(p), w_2(p), \dots , w_d(p)) \quad , \neqn{eg:foo:2}
+\end{align*}
+where $w_j(p) = \sum_{i=1}^{k}c_j(a_i)$ $\forall j \in \{1,\dots,d\}$.
 
+A path $p$ from node $v_1$ to node $v_2$ is a \emph{Pareto-optimal} or \emph{non-dominated} path if there is no path $q \in P$ from $v_1$ to $v_2$ s.t.~$q \prec p$.
+Informally, we also call a Pareto-optimal path $p$ \emph{shortest path}.
+Thus, in an MCSP-problem, the solution consists of a set of Pareto-optimal paths between any two nodes $u, v \in V$.
 
+%Single source shortest path
+\subsection{Single source shortest path (SSSP)}
+In an SSSP problem, we want to compute a shortest path w.r.t.~some weight function $w$ from a given source node $s \in V$ to each node $v \in V$.
 
-\subsection{Pheet} \label{sec:pheet}
+\subsection{Mutligraphs} \label{sec:defs:multigraph}
+
+\subsection{Our problem setting} \label{sec:defs:our}
+%describe what we use and give a concise but complete formal definition.
+
 
 \section{Multi-criteria shortest path} \label{sec:mcsp}
 \todo{Problem statement, implementation}
