@@ -23,6 +23,11 @@
 \usepackage{listings}
 \usepackage{graphicx}
 \usepackage{color}
+\floatstyle{plaintop}
+\usepackage{float}
+\restylefloat{table}
+
+
 \newcommand\todo[1]{\textcolor{red}{TODO: #1}}
 \newcommand\load{L_{\mathrm{max}}}
 \newcommand\numberthis{\addtocounter{equation}{1}\tag{\theequation}}
@@ -244,8 +249,47 @@ Guerriero and Musmanno \cite{GuerrieroM01} thus suggest that parallel computing 
 \section{Multi-criteria priority queue} \label{sec:mcpq}
 \todo{Description and analysis of: virtual array, log-structured list, put/pop, top, steal,\dots}
 
-\section{Performance evaluation} \label{sec:performance}
-\subsection{Methodology} \label{sec:performance:methodology}
+\section{Performance evaluation} \label{sec:eval}
+
+% Mars hardware
+For performance evaluation, we used a shared memory system nicknamed \emph{Mars}, an Intel Xeon based system with the properties listed in Table \ref{table:mars}.
+\begin{table*}
+\begin{center}
+    \begin{tabular}{| l | l |}
+    \hline
+    CPU model & Intel Xeon E7-8850 \\ \hline
+    Number of cores& (8 nodes with 10 cores each) \\ \hline
+    CPU clock & 2.00 GHz \\ \hline
+    L1i & 32 KB \\ \hline
+    L1d & 32 KB \\ \hline
+    L2 & 256 KB \\ \hline
+    L3 & 24576 KB \\ \hline
+    Main memory & 1 TB \\ \hline    
+    \end{tabular}
+    \caption{Hardware configuration of Mars}
+    \label{table:mars}
+\end{center}
+\end{table*}
+% compiler 
+For all experiments, Pheet was compiled using \verb|clang 3.4.2-7| with the the \verb|-O3| flag to allow standard compiler optimizations.
+
+\subsection{Test instances} \label{sec:eval:test_instances}
+% test graphs
+All input instances were created by \verb|PHEET_HOME/test/msp/Lib/Graph/Generator/main.h|, which generates a random connected digraph with the following arguments:
+\begin{compactitem}
+\item \verb|n|: Number of nodes.
+\item \verb|m|: Number of edges.
+\item \verb|d|: Degree of the weight vectors.
+\item \verb|w|: Upper limit for all dimensions of the weight vectors.
+\item \verb|r|: Random seed value.
+\end{compactitem}
+If the option \verb|-p| is given, a multi-graph will be generated. 
+Otherwise, the generated graph will contain no parallel edges.
+\subsection{Methodology} \label{sec:eval:methodology}
+% number of runs
+% confidence intervals
+
+
 
 \section{Related work} \label{sec:related}
 %--------------------------------------------------------------------------------------------
