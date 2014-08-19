@@ -32,7 +32,7 @@
 \newcommand\load{L_{\mathrm{max}}}
 \newcommand\numberthis{\addtocounter{equation}{1}\tag{\theequation}}
 % within an align* environment, number and label the equation. #1 is the label text to be appended to eqn:
-\newcommand\neqn[1]{\numberthis\label{eqn:#1}}
+\newcommand\neqn[1]{\numberthis\label{eq:#1}}
 
 % theorem, lemma, ...
 \newtheorem{lemma}{Lemma}
@@ -174,7 +174,7 @@ Let $p = \langle v_0, a_1, v_1, a_2, \dots,a_k, v_k \rangle$ be a path from $v_0
 We define the weight $w(p)$ of a path $p$ as 
 \begin{align*}
 w: P &\rightarrow \mathbb{N} \\
-p &\mapsto w(p) = \sum_{i=1}^{k}c(a_i) \quad , \neqn{eg:foo:1}
+p &\mapsto w(p) = \sum_{i=1}^{k}c(a_i) \quad , \neqn{sssp_weighted}
 \end{align*}
 i.e., the sum of costs all the arcs in the path $p$.
 
@@ -189,7 +189,7 @@ Thus, we will only deal with the SSSP in this report.
 Multi-criteria shortest path problems \cite{Martins84} generalize shortest path problems w.r.t.~the weight function $c$, which is extended to $d$-dimensional vectors, i.e., $\vect{c}: A \rightarrow \mathbb{N}^d$ and
 \begin{align*}
 \vect{w}: P &\rightarrow \mathbb{N}^d \\
-p &\mapsto \vect{w}(p) = (w_1(p), w_2(p), \dots , w_d(p)) \quad , \neqn{eg:foo:2}
+p &\mapsto \vect{w}(p) = (w_1(p), w_2(p), \dots , w_d(p)) \quad , \neqn{msp_weighted}
 \end{align*}
 where $w_j(p) = \sum_{i=1}^{k}c_j(a_i)$ $\forall j \in \{1,\dots,d\}$.
 
@@ -230,8 +230,15 @@ However, due to the potentially very large graph instances resulting from modeli
 Guerriero and Musmanno \cite{GuerrieroM01} thus suggest that parallel computing might help to design efficient solution methods. 
 
 
-\subsubsection{Mutligraphs} \label{sec:shortest_path:defs:multigraph}
-% TODO: we could explain that our solution works on multi graphs too
+\subsubsection*{Mutligraphs} \label{sec:shortest_path:defs:multigraph}
+A multigraph is a graph that may contain parallel edges, that is, multiple edges may connect the same two nodes. 
+Formally, a directed multigraph $G=(V,A)$ consists of a finite set of nodes $V = \{v_1, v_2,\dots,v_n \}$ and a finite multiset\footnote{In contrast to a set, a multiset may contain the same element multiple times.} of arcs and a function $f$, 
+\begin{align}
+f: A &\rightarrow (u,v) \text{ where } u,v \in V \quad .
+\end{align}
+
+The definition of weighted multigraphs is analogous to the definition of weighted graphs given in Eq.~\ref{eq:msp_weighted}. 
+We note that in contrast to the algorithms mentioned in Section \ref{sec:related}, our algorithm works on multigraphs as well and provide a comparative performance analysis in Section \todo{well, where?}.
 
 \section{Pheet} \label{sec:pheet}
 
@@ -283,7 +290,7 @@ All input instances were created by \verb|PHEET_HOME/test/msp/Lib/Graph/Generato
 \item \verb|w|: Upper limit for all dimensions of the weight vectors.
 \item \verb|r|: Random seed value.
 \end{compactitem}
-If the option \verb|-p| is given, a multi-graph will be generated. 
+If the option \verb|-p| is given, a multigraph will be generated. 
 Otherwise, the generated graph will contain no parallel edges.
 \subsection{Methodology} \label{sec:eval:methodology}
 % number of runs
