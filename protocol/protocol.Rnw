@@ -99,7 +99,7 @@ Wimmer \cite{Wimmer14} further states that a scheduler based on the task priorit
 They back up their claim by providing a parallel implementation of Dijkstra's algorithm on top of Pheet, which utilizes a scheduler based on the priority task scheduling model.
 
 % Pareto priorities
-In their dissertation \cite{Wimmer14}, they suggest to generalize the idea of priority task scheduling to multi-dimensional (or \emph{Pareto-}) priorities, which would allow for an efficient parallel implementation of e.g., algorithms solving the multi-criteria shortest path problem (MSP) as discussed in \cite{Martins84}.
+In their dissertation \cite{Wimmer14}, they suggest to generalize the idea of priority task scheduling to multi-dimensional (or \emph{Pareto-}) priorities, which would allow for an efficient parallel implementation of e.g., algorithms solving the multi-criteria shortest path problem (MSP)\footnote{Sometimes also called multi-objective shortest path or multi-objective optimization problem} as discussed in \cite{Martins84}.
 They outline a different advantage of using multi-dimensional priorities for task scheduling, which is independent of the algorithm that utilizes the scheduler:
 Multi-dimensional priorities establish only a partial ordering on the tasks, which gives the scheduler more flexibility in terms of which task to execute next. 
 
