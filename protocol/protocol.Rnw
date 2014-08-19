@@ -99,7 +99,7 @@ Wimmer \cite{Wimmer14} further states that a scheduler based on the task priorit
 They back up their claim by providing a parallel implementation of Dijkstra's algorithm on top of Pheet, which utilizes a scheduler based on the priority task scheduling model.
 
 % Pareto priorities
-In their dissertation \cite{Wimmer14}, they suggest to generalize the idea of priority task scheduling to multi-dimensional (or \emph{Pareto-}) priorities, which would allow for an efficient parallel implementation of e.g., algorithms solving the multi-criteria shortest path problem (MSP)\footnote{Sometimes also called multi-objective shortest path or multi-objective optimization problem} as discussed in \cite{Martins84}.
+In their dissertation \cite{Wimmer14}, they suggest to generalize the idea of priority task scheduling to multi-dimensional (or \emph{Pareto-}) priorities, which would allow for an efficient parallel implementation of e.g., algorithms solving the multi-criteria shortest path problem (MSP)\footnote{Sometimes also called multi-objective shortest path problem, multi-objective optimization or multi-objective search.} as discussed in \cite{Martins84}.
 They outline a different advantage of using multi-dimensional priorities for task scheduling, which is independent of the algorithm that utilizes the scheduler:
 Multi-dimensional priorities establish only a partial ordering on the tasks, which gives the scheduler more flexibility in terms of which task to execute next. 
 
@@ -110,7 +110,7 @@ In this work, we investigate a potential implementation of such a multi-dimensio
 
 
 \subsubsection*{Outline} \label{sec:intro:outline}
-We give formal definitions of the shortest path problems in Section \ref{sec:shortest_path}.
+We give a formal definition of the multi-criteria shortest path problem in Section \ref{sec:shortest_path}, where we also discusses the hardness of the problem.
 In Section \ref{sec:pheet}, we provide a general introduction to the Pheet task scheduling framework and a more detailed presentation of the concepts used in Pheet that are relevant for this work.
 
 \todo{...}
@@ -155,29 +155,14 @@ In such a setting, we usually cannot give a single best solution anymore.
 Instead, we can give several reasonable solutions: 
 The fastest route will usually use highways, thus increasing the toll costs, while a slightly slower route may reduce the toll costs by avoiding highways. 
 Problems like this can be modeled as \emph{multi-criteria shortest path} (MSP) problems, where we are interested in all optimal alternatives, i.e., in routes that are \emph{Pareto-optimal}. 
-A route from A to B is Pareto-optimal if there is no other route with less or equal cost for each of the $d$ criteria.
+A route from A to B is Pareto-optimal if there is no other route with less or equal cost for each of the $d$ objectives.
 
-% Applications
-Apart from the problem of finding an optimal route in a road map as outlined above, the MSP problem has numerous outer applications, such as routing in multimedia networks \cite{ClimacoCP03} \todo{more applications?}
-
-% Hardness of the problem, reason for parallelization
-Note that the graph instances resulting from modeling practical problems are potentially very large. 
-While the MSP is NP-hard in general, even for $d=2$ \cite{GareyJ79}, it was shown that the problem is feasible for many practically relevant instances \cite{Muller-HannemannW01}.
-However, due to the potentially very large graph instances resulting from modeling e.g., road or railway networks, the computational cost is significant even if a small number of criteria is to be optimized \cite{GuerrieroM01}.
-Guerriero and Musmanno \cite{GuerrieroM01} thus suggest that parallel computing might help to design efficient solution methods. 
-
-% Sanders, Erb: first parallel MSP algo, but mostly for d=2
-To the best of our knowledge, Sanders and Mandow \cite{SM13} published the first proposal of a parallel algorithm for the MSP by extending Dijkstra's classical algorithm \cite{Dijkstra59}.
-Their approach relies on a so called \emph{Pareto queue}, a multi-dimensional generalization of a priority queue. 
-While they give a high level description of the algorithm for arbitrary $d \geq 2$ and a detailed description of the bi-criteria case (which was further engineered by Erb \cite{Erb13}), they also state that efficient priority queues for $d\geq3$ are not yet known.
-
-
-\subsection{Definitions and notation} \label{sec:shortest_path:defs}
-We provide definitions for variations of the shortest path problems considered in this report. 
+%subsection{Definitions and notation} \label{sec:shortest_path:defs}
+In the following, we provide definitions for variations of the shortest path problems considered in this report. 
 The classic text book by Cormen et al.~\cite{CLRS01} provides a more detailed introduction to basic shortest path problems and algorithms.
 
 % Define single-source shortest path
-\subsubsection{The classical shortest path problem} \label{sec:shortest_path:defs:sssp}
+\subsection{The classical shortest path problem} \label{sec:shortest_path:defs:sssp}
 We are given a weighted directed graph $G=(V,A)$, where $V= \{v_1, v_2, \dots, v_n\}$ is a finite set of nodes, $A \subseteq V \times V$ is a finite set of arcs (directed edges) and $c: A \rightarrow \mathbb{N}$ is the cost or weight function. 
 W.l.o.g., we assume that $G$ is a connected graph.
 Let $p = \langle v_0, a_1, v_1, a_2, \dots,a_k, v_k \rangle$ be a path from $v_0$ to $v_k$ in $G$ and $P$ be the set of all paths in $G$.
@@ -194,7 +179,7 @@ Different variations of the problem exist, such as the \emph{single-destination}
 Note that an optimal algorithm for the SSSP can easily be turned into an optimal algorithm for the first two variants \cite{CLRS01}.
 Thus, we will only deal with the SSSP in this report.
 
-\subsubsection{Multi-criteria shortest path (MSP)} \label{sec:shortest_path:defs:msp}
+\subsection{Multi-criteria shortest path (MSP)} \label{sec:shortest_path:defs:msp}
 %MSP
 Multi-criteria shortest path problems \cite{Martins84} generalize shortest path problems w.r.t.~the weight function $c$, which is extended to $d$-dimensional vectors, i.e., $\vect{c}: A \rightarrow \mathbb{N}^d$ and
 \begin{align*}
@@ -217,7 +202,27 @@ A path $p$ from node $v_1$ to node $v_2$ is a \emph{Pareto-optimal} or \emph{non
 Informally, we also call a Pareto-optimal path $p$ \emph{shortest path}.
 Thus, for the MSP, the solution consists of a set of Pareto-optimal paths for each considered pair of nodes.
 
+\subsubsection*{Approximate solutions} \label{sec:shortest_path:approx}
+\todo{\cite{Sonnier06} explains the notion of supported solutions quite well}
 
+\subsubsection*{Applications} \label{sec:shortest_path:applications} 
+% Applications
+Apart from the problem of finding an optimal route in a road map as outlined above, the MSP problem has numerous outer applications, such as routing in multimedia networks \cite{ClimacoCP03}, route guidance \cite{JahnMS00} and curve approximation \cite{MehlhornZ00}.
+
+\subsubsection*{Hardness and practicality} \label{sec:shortest_path:hardness}
+% Hardness of the problem, reason for parallelization
+% Note that the graph instances resulting from modeling practical problems are potentially very large. 
+The crucial parameter for the complexity of the MSP is the total number of Pareto optima for all visited nodes. 
+Since this number is exponential in $n$ in the worst case, the MSP is in general NP-hard.
+Even for $d=2$, the decision problem whether there exists a path between two nodes whose length is below a given threshold is NP-hard \cite{GareyJ79}.
+However, it was observed that the problem is efficiently tractable from a practical viewpoint for many practically relevant instances. 
+The input data of practical applications tends to have certain characteristics, which lead to the set of Pareto optima for a vertex to be polynomially bounded \cite{Muller-HannemannW06}. 
+It was shown that in applied scenarios this number may even be bounded by a small constant \cite{Muller-HannemannW01}. 
+Thus, MSP can be solved efficiently for small $d$ and not too large graphs adhering certain characteristics.
+
+% reason for parallelization
+However, due to the potentially very large graph instances resulting from modeling e.g., road or railway networks, the computational cost is significant even if a small number of criteria is to be optimized.
+Guerriero and Musmanno \cite{GuerrieroM01} thus suggest that parallel computing might help to design efficient solution methods. 
 
 
 \subsubsection{Mutligraphs} \label{sec:shortest_path:defs:multigraph}
@@ -242,9 +247,32 @@ Thus, for the MSP, the solution consists of a set of Pareto-optimal paths for ea
 \section{Performance evaluation} \label{sec:performance}
 \subsection{Methodology} \label{sec:performance:methodology}
 
-\section{Conclusion} \label{sec:conclusion}
+\section{Related work} \label{sec:related}
+%--------------------------------------------------------------------------------------------
+%Should related work be covered near the beginning of the paper or near the end?
+%   - Beginning, if it can be short yet detailed enough, or if it's critical to take a strong defensive stance about previous work right away. In this case Related Work can be either a subsection at the end of the Introduction, or its own Section 2.
+%   	- End, if it can be summarized quickly early on (in the Introduction or Preliminaries), or if sufficient comparisons require the technical content of the paper. In this case Related Work should appear just before the Conclusions, possibly in a more general section "Discussion and Related Work".
+%--------------------------------------------------------------------------------------------
 
+% Ehrgott, Gandibleux: 
+For an overview of related work for the MCSP without parallelization, we refer to the annotated bibliography of multiobjective combinatorial optimization \cite{EhrgottG02}, specifically Section ``6.1 Shortest path problems''.
+
+% Bi-criteria
+
+% Sonnier: approximate solutions for d \in {3,4}
+Sonnier \cite{Sonnier06} were \todo{only one author. Use plural nonetheless?} one of the first to publish parallel algorithms for solving MSP problems with 3 or 4 objectives. 
+Their algorithms are based on a weighted sum approach and thus provide only an approximate solution, i.e., the solution set may not contain all Pareto-optimal paths.
+
+% Sanders, Erb: first parallel MSP algo, but mostly for d=2
+To the best of our knowledge, Sanders and Mandow \cite{SM13} published the first proposal for a parallel algorithm that provides an exact solution of the MSP.
+Their approach extends Dijkstra's classical algorithm \cite{Dijkstra59} and relies on a so called \emph{Pareto queue}, a multi-dimensional generalization of a priority queue. 
+While they give a high level description of the algorithm for arbitrary $d \geq 2$ and a detailed description of the bi-criteria case (which was further engineered by Erb \cite{Erb13}), they also state that efficient priority queues for $d\geq3$ are not yet known.
+
+\section{Conclusion} \label{sec:conclusion}
+\todo{...}
 \section{Acknowledgements} \label{sec:ack}
+\todo{...}
+
 
 \begin{figure}
 \begin{center}
