@@ -162,7 +162,7 @@ Apart from the problem of finding an optimal route in a road map as outlined abo
 
 % Hardness of the problem, reason for parallelization
 Note that the graph instances resulting from modeling practical problems are potentially very large. 
-While the MSP is NP-hard in general \cite{GareyJ79}, it was shown that the problem is feasible for many practically relevant instances \cite{Muller-HannemannW01}.
+While the MSP is NP-hard in general, even for $d=2$ \cite{GareyJ79}, it was shown that the problem is feasible for many practically relevant instances \cite{Muller-HannemannW01}.
 However, due to the potentially very large graph instances resulting from modeling e.g., road or railway networks, the computational cost is significant even if a small number of criteria is to be optimized \cite{GuerrieroM01}.
 Guerriero and Musmanno \cite{GuerrieroM01} thus suggest that parallel computing might help to design efficient solution methods. 
 
