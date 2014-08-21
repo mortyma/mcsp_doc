@@ -26,13 +26,21 @@
 \floatstyle{plaintop}
 \usepackage{float}
 \restylefloat{table}
+\usepackage {tikz}
+\usetikzlibrary{positioning}
+\usepackage{pgfplots}
 
-
+\newcommand{\notimplies}{%
+  \mathrel{{\ooalign{\hidewidth$\not\phantom{=}$\hidewidth\cr$\implies$}}}}
 \newcommand\todo[1]{\textcolor{red}{TODO: #1}}
 \newcommand\load{L_{\mathrm{max}}}
 \newcommand\numberthis{\addtocounter{equation}{1}\tag{\theequation}}
 % within an align* environment, number and label the equation. #1 is the label text to be appended to eqn:
 \newcommand\neqn[1]{\numberthis\label{eq:#1}}
+% total order relation
+\newcommand{\tor}{\ensuremath{\leq_R}}
+\newcommand{\osum}{\ensuremath{\leq_{\text{sum}}}}
+\newcommand{\olex}{\ensuremath{\leq_{\text{lex}}}}
 
 % theorem, lemma, ...
 \newtheorem{lemma}{Lemma}
@@ -170,7 +178,8 @@ The classic text book by Cormen et al.~\cite{CLRS01} provides a more detailed in
 \subsection{The classical shortest path problem} \label{sec:shortest_path:defs:sssp}
 We are given a weighted directed graph $G=(V,A)$, where $V= \{v_1, v_2, \dots, v_n\}$ is a finite set of nodes, $A \subseteq V \times V$ is a finite set of arcs (directed edges) and $c: A \rightarrow \mathbb{N}$ is the cost or weight function. 
 W.l.o.g., we assume that $G$ is a connected graph.
-Let $p = \langle v_0, a_1, v_1, a_2, \dots,a_k, v_k \rangle$ be a path from $v_0$ to $v_k$ in $G$ and $P$ be the set of all paths in $G$.
+Let $p = \langle v_0, a_1, v_1, a_2, \dots,a_k, v_k \rangle$ be a path\footnote{We will also write $p = \langle v_0, v_1, \dots,v_k \rangle$ when not dealing with multigraphs, since an arc $a_i$ is well defined by its two adjacent nodes.}from $v_0$ to $v_k$ in $G$.
+Furthermore, let $P$ be the set of all paths and $P_{u,v}$ be the set of all paths from node $u$ to node $v$ in $G$.
 We define the weight $w(p)$ of a path $p$ as 
 \begin{align*}
 w: P &\rightarrow \mathbb{N} \\
@@ -207,8 +216,6 @@ A path $p$ from node $v_1$ to node $v_2$ is a \emph{Pareto-optimal} or \emph{non
 Informally, we also call a Pareto-optimal path $p$ \emph{shortest path}.
 Thus, for the MSP, the solution consists of a set of Pareto-optimal paths for each considered pair of nodes.
 
-\subsubsection*{Approximate solutions} \label{sec:shortest_path:approx}
-\todo{\cite{Sonnier06} explains the notion of supported solutions quite well}
 
 \subsubsection*{Applications} \label{sec:shortest_path:applications} 
 % Applications
@@ -218,7 +225,7 @@ Apart from the problem of finding an optimal route in a road map as outlined abo
 % Hardness of the problem, reason for parallelization
 % Note that the graph instances resulting from modeling practical problems are potentially very large. 
 The crucial parameter for the complexity of the MSP is the total number of Pareto optima for all visited nodes. 
-Since this number is exponential in $n$ in the worst case, the MSP is in general NP-hard.
+Since this number is exponential in $n$ in the worst case \cite{Hansen80}, the MSP is in general NP-hard.
 Even for $d=2$, the decision problem whether there exists a path between two nodes whose length is below a given threshold is NP-hard \cite{GareyJ79}.
 However, it was observed that the problem is efficiently tractable from a practical viewpoint for many practically relevant instances. 
 The input data of practical applications tends to have certain characteristics, which lead to the set of Pareto optima for a vertex to be polynomially bounded \cite{Muller-HannemannW06}. 
@@ -229,6 +236,104 @@ Thus, MSP can be solved efficiently for small $d$ and not too large graphs adher
 However, due to the potentially very large graph instances resulting from modeling e.g., road or railway networks, the computational cost is significant even if a small number of criteria is to be optimized.
 Guerriero and Musmanno \cite{GuerrieroM01} thus suggest that parallel computing might help to design efficient solution methods. 
 
+\subsubsection*{Approximate solutions} \label{sec:shortest_path:approx}
+% heuristics
+Due to the hardness of the MSP, heuristic methods are sometimes employed (see, e.g., \cite{BastMS03, Sonnier06, EhrgottG02}).
+% weighted sum approach
+A common approach is to define a total order relation $\tor$ on $P$ that allows for a more efficient computation of the Pareto-optima.
+Such a relation $\tor$ has to satisfy the following properties:
+\begin{align}
+\forall p,q \in P_{u,v}: p \prec q \implies p \tor q  \quad \text{Dominance} \\
+\forall p \in P_{u,v}, \forall (v,w) \in A: p \tor p \cup \langle v,w \rangle \quad \text{Monotonic}
+\end{align}
+Martins et al.~\cite{MartinsPRS07} show that the following relation satisfies these requirements:
+\begin{align}
+p \osum q \iff \sum_{i=1}^{d} w_i(p) \leq  \sum_{i=1}^{d} w_i(q) 
+\end{align}
+% supported/non-supported solutions
+However, as Sonnier \cite{Sonnier06} points out, a problem with algorithms based on such a relation is that 
+\begin{align}
+p \osum q  \notimplies p \prec q \quad , \neqn{osum_problem}
+\end{align}
+i.e., only solutions that lie on the convex hull of the feasible region are found, which are called the supported solutions. 
+In other words, there exist Pareto-optima which may not be found because of the property given in Eq.~\ref{eq:osum_problem}.
+
+% graph example from Sonnier
+To see this, consider the following example from Sonnier \cite{Sonnier06}.
+Assume we are interested in the Pareto-optimal paths from node 1 to node 5 in the graph depicted in Fig.~\ref{fig:example_graph}.
+The solution set is shown in Table \ref{table:pareto_paths}; note that all the paths are supported solutions, since we have 
+\begin{align}
+\forall j,k \in \{1,\dots,4\}: \sum_{i=1}^{d} w_i(p_j) =  \sum_{i=1}^{d} w_i(p_k) \quad .
+\end{align}
+We extend the example by adding an arc $(1,5)$ with weight vector $(3.8,6.8)$.
+Note that now, in addition to the previous solutions, the path $p_5 = \langle 1,5 \rangle $ is a Pareto-optimal path.
+However, we have 
+\begin{align}
+\forall j \in \{1,\dots,4\}: \sum_{i=1}^{d} w_i(p_j) < \sum_{i=1}^{d} w_i(p_5) \quad ,
+\end{align}
+i.e., $p_5$ is not on the convex hull an thus called an \emph{unsupported non-dominated solution}, as depicted in Fig. \ref{fig:unsupported_solution}.
+% approximate solution set
+Thus, an \emph{approximate solution set} provides a ``reasonable'' set of non-dominated paths, but is not necessarily complete.
+
+\begin{figure}
+\begin {center}
+\begin {tikzpicture}[-latex, auto, node distance = 3 cm, on grid, semithick, state/.style = {circle, top color = white, draw, minimum width = 1 cm}]
+\node[state] (n1) {$1$};
+\node[state] (n2) [below right of = n1] {$2$};
+\node[state] (n3) [above right of = n2] {$3$};
+\node[state] (n4) [below right of = n3] {$4$};
+\node[state] (n5) [above right of = n4] {$5$};
+\path (n1) edge node[above = 0.05 cm] {$(1,4)$} (n3);
+\path (n3) edge node[above = 0.05 cm] {$(4,1)$} (n5);
+\path (n1) edge [bend right = 30] node[below = 0.2 cm] {$(1,1)$} (n2);
+\path (n2) edge [bend right = 30] node[below = 0.2 cm] {$(1,2)$} (n3);
+\path (n3) edge [bend right = 30] node[below = 0.2 cm] {$(2,1)$} (n4);
+\path (n4) edge [bend right = 30] node[below = 0.2 cm] {$(1,1)$} (n5);
+%\path (n1) edge [bend left = 30, color=red] node[above = 0.2 cm, color=red] {$(3.8,6.8)$} (n5);
+\end{tikzpicture}
+\end{center}
+\caption{A weighted ($d=2$) directed graph.}
+\label{fig:example_graph}
+\end{figure}
+
+\begin{table*}
+\begin{center}
+    \begin{tabular}{| l | c |}
+    \hline
+    \textbf{Path} & \textbf{Weight vector} \\ \hline \hline
+    $p_1 = \langle 1,2,3,4,5 \rangle$ & (5,5) \\ \hline
+    $p_2 = \langle 1,3,4,5\rangle$  & (4,6) \\ \hline
+    $p_3 = \langle 1,2,3,5\rangle$  & (3,7) \\ \hline
+    $p_4 = \langle 1,3,5\rangle$ & (2,8) \\ \hline
+    %$p_5$: 1-5 & (3.8,6.8) \\ \hline
+    \end{tabular}
+    \caption{Pareto-optimal paths from node 1 to node 2 in the graph of Fig.~\ref{fig:example_graph}}
+    \label{table:pareto_paths}
+\end{center}
+\end{table*}
+
+\begin{figure}
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[xlabel=$w_1$, ylabel=$w_2$, nodes near coords, enlargelimits=0.2]
+	\addplot+[color=blue, mark=*, point meta=explicit symbolic] 
+	coordinates {
+		(5,5) [$p_1$]
+		(4,6) [$p_2$]
+		(3,7) [$p_3$]
+		(2,8) [$p_4$]
+	};
+	\addplot+[color=red, mark=*, point meta=explicit symbolic] 
+	coordinates {
+		(3.8,6.8) [$p_5$]
+	};
+\end{axis}
+\end{tikzpicture}
+\end{center}
+\caption{An unsupported non-dominated solution: $p_5$}
+\label{fig:unsupported_solution}
+\end{figure}
+
 
 \subsubsection*{Mutligraphs} \label{sec:shortest_path:defs:multigraph}
 A multigraph is a graph that may contain parallel edges, that is, multiple edges may connect the same two nodes. 
@@ -238,7 +343,7 @@ f: A &\rightarrow (u,v) \text{ where } u,v \in V \quad .
 \end{align}
 
 The definition of weighted multigraphs is analogous to the definition of weighted graphs given in Eq.~\ref{eq:msp_weighted}. 
-We note that in contrast to the algorithms mentioned in Section \ref{sec:related}, our algorithm works on multigraphs as well and provide a comparative performance analysis in Section \todo{well, where?}.
+We note that in contrast to the algorithms mentioned in Section \ref{sec:related}, our algorithm works on multigraphs as well and provide a comparative performance evaluation in Section \todo{well, where?}.
 
 \section{Pheet} \label{sec:pheet}
 
@@ -265,7 +370,7 @@ For performance evaluation, we used a shared memory system nicknamed \emph{Mars}
     \begin{tabular}{| l | l |}
     \hline
     CPU model & Intel Xeon E7-8850 \\ \hline
-    Number of cores& (8 nodes with 10 cores each) \\ \hline
+    Number of cores & 80 (8 nodes with 10 cores each) \\ \hline
     CPU clock & 2.00 GHz \\ \hline
     L1i & 32 KB \\ \hline
     L1d & 32 KB \\ \hline
@@ -282,7 +387,7 @@ For all experiments, Pheet was compiled using \verb|clang 3.4.2-7| with the the 
 
 \subsection{Test instances} \label{sec:eval:test_instances}
 % test graphs
-All input instances were created by \verb|PHEET_HOME/test/msp/Lib/Graph/Generator/main.h|, which generates a random connected digraph with the following arguments:
+All input instances were created by \verb|PHEET_HOME/test/msp/lib/Graph/Generator/main.h|, which generates a random connected digraph with the following arguments:
 \begin{compactitem}
 \item \verb|n|: Number of nodes.
 \item \verb|m|: Number of edges.
