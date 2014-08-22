@@ -261,19 +261,6 @@ In other words, there exist Pareto-optima which may not be found because of the 
 % graph example from Sonnier
 To see this, consider the following example from Sonnier \cite{Sonnier06}.
 Assume we are interested in the Pareto-optimal paths from node 1 to node 5 in the graph depicted in Fig.~\ref{fig:example_graph}.
-The solution set is shown in Table \ref{table:pareto_paths}; note that all the paths are supported solutions, since we have 
-\begin{align}
-\forall j,k \in \{1,\dots,4\}: \sum_{i=1}^{d} w_i(p_j) =  \sum_{i=1}^{d} w_i(p_k) \quad .
-\end{align}
-We extend the example by adding an arc $(1,5)$ with weight vector $(3.8,6.8)$.
-Note that now, in addition to the previous solutions, the path $p_5 = \langle 1,5 \rangle $ is a Pareto-optimal path.
-However, we have 
-\begin{align}
-\forall j \in \{1,\dots,4\}: \sum_{i=1}^{d} w_i(p_j) < \sum_{i=1}^{d} w_i(p_5) \quad ,
-\end{align}
-i.e., $p_5$ is not on the convex hull an thus called an \emph{unsupported non-dominated solution}, as depicted in Fig. \ref{fig:unsupported_solution}.
-% approximate solution set
-Thus, an \emph{approximate solution set} provides a ``reasonable'' set of non-dominated paths, but is not necessarily complete.
 
 \begin{figure}
 \begin {center}
@@ -295,6 +282,18 @@ Thus, an \emph{approximate solution set} provides a ``reasonable'' set of non-do
 \caption{A weighted ($d=2$) directed graph.}
 \label{fig:example_graph}
 \end{figure}
+
+The solution set is shown in Table \ref{table:pareto_paths}; note that all the paths are supported solutions, since we have 
+\begin{align}
+\forall j,k \in \{1,\dots,4\}: \sum_{i=1}^{d} w_i(p_j) =  \sum_{i=1}^{d} w_i(p_k) \quad .
+\end{align}
+We extend the example by adding an arc $(1,5)$ with weight vector $(3.8,6.8)$.
+Note that now, in addition to the previous solutions, the path $p_5 = \langle 1,5 \rangle $ is a Pareto-optimal path.
+However, we have 
+\begin{align}
+\forall j \in \{1,\dots,4\}: \sum_{i=1}^{d} w_i(p_j) < \sum_{i=1}^{d} w_i(p_5) \quad ,
+\end{align}
+i.e., $p_5$ is not on the convex hull an thus called an \emph{unsupported non-dominated solution}, as depicted in Fig. \ref{fig:unsupported_solution}.
 
 \begin{table*}
 \begin{center}
@@ -334,6 +333,8 @@ Thus, an \emph{approximate solution set} provides a ``reasonable'' set of non-do
 \label{fig:unsupported_solution}
 \end{figure}
 
+% approximate solution set
+Thus, an \emph{approximate solution set} provides a ``reasonable'' set of non-dominated paths, but is not necessarily complete.
 
 \subsubsection*{Mutligraphs} \label{sec:shortest_path:defs:multigraph}
 A multigraph is a graph that may contain parallel edges, that is, multiple edges may connect the same two nodes. 
