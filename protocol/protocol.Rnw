@@ -128,36 +128,6 @@ In Section \ref{sec:pheet}, we provide a general introduction to the Pheet task 
 
 \todo{...}
 
-\section{Bits and pieces}
-
-% plug-in architecture
-Pheet's flexible plug-in architecture based on C++ templates allows for any component in the task scheduling system to be replaced by a different implementation.
-% Pheet benchmark suite & performance counters
-Additionally, Pheet provides a set of micro-benchmarks (that aim to evaluate specific aspects of the scheduling framework) and fine grained performance counters (that provide detailed insight into the scheduler and supporting data structures). 
-% Framework for evaluation of scheduler components
-Overall, Pheet is a suitable framework for the evaluation and comparison of scheduler components.
-
-% reference Martin's dissertation
-A detailed introduction to Pheet and the research based on it can be found in the dissertation of Martin Wimmer \cite{Wimmer14}. 
-
-% work pool pattern
-The task-parallel model is based on the \emph{work pool pattern}:
-Informally, a task is a small amount of work that is to be executed sequentially.
-All such tasks are stored in a work pool.
-As soon as a processor is ready to execute work, it retrieves a task that is ready to be executed from the work pool.
-A task may itself create additional tasks that are then stored in the work pool.
-A famous algorithm based on the work pool pattern is Dijkstra's algorithm \cite{Dijkstra59} for the SSSP:
-
-
-% task-parallel model
-Additionally, the programmer defines dependencies between the task which ensure that a task is not executed before all required prerequisites are met; if, however, two tasks do not depend on each other, they may be executed in parallel.
-
-% pareto priority queue
-\begin{comment}
-A Pareto priority queue ensures that that the next task to be executed is a Pareto optimum, i.e., a task for which the partial solution is not dominated by the partial solution of any other task - from MW diss
-\end{comment}
-
-
 \section{Shortest path problems} \label{sec:shortest_path}
 % Informally introduce shortest path
 The problem of finding a shortest path between two nodes in a graph is a classical problem in computer science with numerous practical applications, such as finding the quickest route from location A to location B.
@@ -287,13 +257,6 @@ The solution set is shown in Table \ref{table:pareto_paths}; note that all the p
 \begin{align}
 \forall j,k \in \{1,\dots,4\}: \sum_{i=1}^{d} w_i(p_j) =  \sum_{i=1}^{d} w_i(p_k) \quad .
 \end{align}
-We extend the example by adding an arc $(1,5)$ with weight vector $(3.8,6.8)$.
-Note that now, in addition to the previous solutions, the path $p_5 = \langle 1,5 \rangle $ is a Pareto-optimal path.
-However, we have 
-\begin{align}
-\forall j \in \{1,\dots,4\}: \sum_{i=1}^{d} w_i(p_j) < \sum_{i=1}^{d} w_i(p_5) \quad ,
-\end{align}
-i.e., $p_5$ is not on the convex hull an thus called an \emph{unsupported non-dominated solution}, as depicted in Fig. \ref{fig:unsupported_solution}.
 
 \begin{table*}
 \begin{center}
@@ -310,6 +273,16 @@ i.e., $p_5$ is not on the convex hull an thus called an \emph{unsupported non-do
     \label{table:pareto_paths}
 \end{center}
 \end{table*}
+
+We extend the example by adding an arc $(1,5)$ with weight vector $(3.8,6.8)$.
+Note that now, in addition to the previous solutions, the path $p_5 = \langle 1,5 \rangle $ is a Pareto-optimal path.
+However, we have 
+\begin{align}
+\forall j \in \{1,\dots,4\}: \sum_{i=1}^{d} w_i(p_j) < \sum_{i=1}^{d} w_i(p_5) \quad ,
+\end{align}
+i.e., $p_5$ is not on the convex hull an thus called an \emph{unsupported non-dominated solution}, as depicted in Fig. \ref{fig:unsupported_solution}.
+% approximate solution set
+Thus, an \emph{approximate solution set} provides a ``reasonable'' set of non-dominated paths, but is not necessarily complete.
 
 \begin{figure}
 \begin{center}
@@ -333,9 +306,6 @@ i.e., $p_5$ is not on the convex hull an thus called an \emph{unsupported non-do
 \label{fig:unsupported_solution}
 \end{figure}
 
-% approximate solution set
-Thus, an \emph{approximate solution set} provides a ``reasonable'' set of non-dominated paths, but is not necessarily complete.
-
 \subsubsection*{Mutligraphs} \label{sec:shortest_path:defs:multigraph}
 A multigraph is a graph that may contain parallel edges, that is, multiple edges may connect the same two nodes. 
 Formally, a directed multigraph $G=(V,A)$ consists of a finite set of nodes $V = \{v_1, v_2,\dots,v_n \}$ and a finite multiset\footnote{In contrast to a set, a multiset may contain the same element multiple times.} of arcs and a function $f$, 
@@ -348,13 +318,75 @@ We note that in contrast to the algorithms mentioned in Section \ref{sec:related
 
 \section{Pheet} \label{sec:pheet}
 % what we will do in this section
+In this section, we provide an introduction to the concepts used in Pheet that are relevant for this technical report. While Sections \ref{sec:pheet:task_parallel}, \ref{sec:pheet:scheduling} and \ref{sec:pheet:work_stealing} provide a high-level overview of general concepts within the context of Pheet, Sections \ref{sec:pheet:places}, \ref{sec:pheet:task_priorites} and \ref{sec:pheet:priority_sched} give an introduction to Pheet-specific concepts. 
 
-In t
+% reference Martin's dissertation
+A detailed introduction to Pheet, the concepts it is built on and the research based on it can be found in the dissertation of Martin Wimmer \cite{Wimmer14}. 
+
+\subsubsection*{Philosophy} \label{sec:pheet:philosophy}
+% How is pheet implemented, what are its goals?
+Pheet is a task-parallel programming library built on the well known \emph{work stealing pattern} with the goal of providing a simple-to-use framework for the quick parallelization of algorithms.
+Its flexible plug-in architecture based on C++ template meta-programming allows for any component in the task scheduling system to be replaced by an alternative implementation.
+Additionally, Pheet provides a set of micro-benchmarks (that aim to evaluate specific aspects of the scheduling framework) and fine grained performance counters (that provide detailed insight into the scheduler and supporting data structures), which makes the framework a suitable platform for the implementation and testing of new components such as schedulers or priority queues. 
+
+\subsection{Concepts} \label{sec:pheet:concepts}
+
+\subsubsection{Places} \label{sec:pheet:places}
+A \emph{place}\cite{Wimmer14} denotes a single worker thread in the Pheet scheduling system that is pinned to specific processor, that is, a place will not migrate to another processing unit during execution.
+Each processor utilized by Pheet is assigned exactly one place, implying a one-to-one correspondence of places and processors. 
+By uniquely identifying processors, places simplify the implementation of parellel algorithms and data structures.
+
+Furthermore, places are employed to deal with aspects related to the memory hierarchy as well as locality. 
+However, as those concepts are not considered in our contribution, we refer the interested reader to the work of Wimmer\cite{Wimmer14}.
 
 
-\subsection{Task parallelism} \label{sec:pheet:task_parallelism}
+\subsubsection{Task parallelism} \label{sec:pheet:task_parallel}
+% work pool
+Pheet is based on the \emph{task-parallel model}, where a task is a small portion of work that is to be executed sequentially.
+As soon as a processor is ready to execute work, it retrieves a task from the \emph{work pool}, which contains all the tasks that have yet to be executed.
+A task may itself create additional tasks that are then stored in the work pool.
 
-\subsection{Priority scheduling} \label{sec:pheet:priority_sched}
+A famous algorithm based on the work pool pattern is Dijkstra's algorithm \cite{Dijkstra59} for the shortest path problem:
+The algorithm requires a priority queue (that may be implemented as e.g., a simple binary search tree or a Fibonacci heap), which is but a work pool.
+
+% task parallelism
+Additionally, the programmer may define dependencies between the tasks which ensure that a task is not executed before all required prerequisites are met; if, however, two tasks do not depend on each other, they may be executed in parallel (or sequentially in arbitrary order).
+
+Note that in a task parallel program, the work pool is not necessarily a centralized data structure; each place may maintain its own. 
+Furthermore, once place starts executing a task, the task will stay at this place until its execution is finished. 
+
+\subsubsection{Task scheduling} \label{sec:pheet:scheduling}
+% What does the scheduler do?
+The task parallel model is independent of any machine specifics. 
+It merely exposes the available work to the \emph{scheduler}, which is responsible for devising a schedule, i.e., a mapping of tasks to the processors such that the partial order of the tasks is maintained, thereby determining which processor executes a task as well as the execution order of the tasks. 
+
+% Online/offline scheduling; what is used in Pheet and why
+The schedulers developed for Pheet employ \emph{online scheduling}, where -- in contrast to \emph{offline scheduling} -- the schedule cannot be precomputed statically, since not all the required information is available before the execution.
+This is due to e.g., new tasks being created during the execution and/or the nondeterministic execution time of tasks.
+
+% Explain that we don't explain scheduling
+Task scheduling itself is a vast and active area of research with many different variations in the problem setting and models.
+Since we do not deal with any complex scheduling in this work, we refrain from giving a more elaborate introduction and refer the reader to the Wimmer's dissertation\cite{Wimmer14}, which contains several pointers to the literature.
+
+\subsubsection{Work stealing} \label{sec:pheet:work_stealing}
+
+\subsubsection{Task priorities} \label{sec:pheet:task_priorites}
+
+\subsubsection{Priority scheduling} \label{sec:pheet:priority_sched}
+``Priority scheduling differs from normal scheduling due to the fact that the order in which tasks are executed is decoupled from the order in which they are created.'' \cite{Wimmer14}, page 40.
+
+\subsubsection{Dead tasks} \label{sec:pheet:dead_tasks}
+
+\section{Bits and pieces}
+
+% pareto priority queue idea
+\begin{comment}
+A Pareto priority queue ensures that that the next task to be executed is a Pareto optimum, i.e., a task for which the partial solution is not dominated by the partial solution of any other task - from MW diss
+\end{comment}
+
+\subsection{Memory model}
+\todo{explain C++ memory consistency model: required for implementation of Pareto-queue}
+
 
 
 \section{Multi-criteria shortest path} \label{sec:msp_algo}
@@ -433,190 +465,6 @@ While they give a high level description of the algorithm for arbitrary $d \geq 
 \todo{...}
 \section{Acknowledgements} \label{sec:ack}
 \todo{...}
-
-
-\begin{figure}
-\begin{center}
-<<fig=TRUE, echo=FALSE>>=
-plotPerformanceVariance(
-"../benchmarks/mars/g_2000_13000_3_10000_42/with_lincomb/s2pareto.dat", from=1, to=3)
-@
-\end{center}
-\caption{Performance with linear combination in Strategy2TaskStrategy::prioritize (g\_2000\_13000\_3\_10000\_42)}
-\end{figure}
-
-\begin{figure}
-\begin{center}
-<<fig=TRUE, echo=FALSE>>=
-plotPerformanceVariance(
-"../benchmarks/mars/g_2000_13000_3_10000_42/with_lincomb/s2pareto.dat", from=4, to=80)
-@
-\end{center}
-\caption{Performance with linear combination in Strategy2TaskStrategy::prioritize (g\_2000\_13000\_3\_10000\_42)}
-\end{figure}
-
-\begin{figure}
-\begin{center}
-<<fig=TRUE, echo=FALSE>>=
-plotPerformanceVariance(
-"../benchmarks/mars/g_2000_13000_3_10000_42/without_lincomb/s2pareto.dat", from=1, to=3)
-@
-\end{center}
-\caption{Performance without linear combination in Strategy2TaskStrategy::prioritize (g\_2000\_13000\_3\_10000\_42)}
-\end{figure}
-
-\begin{figure}
-\begin{center}
-<<fig=TRUE, echo=FALSE>>=
-plotPerformanceVariance(
-"../benchmarks/mars/g_2000_13000_3_10000_42/without_lincomb/s2pareto.dat", from=4, to=80)
-@
-\end{center}
-\caption{Performance without linear combination in Strategy2TaskStrategy::prioritize (g\_2000\_13000\_3\_10000\_42)}
-\end{figure}
-
-\begin{figure}
-\begin{center}
-<<fig=TRUE, echo=FALSE>>=
-plotOverCpus(
-"../benchmarks/mars/g_2000_13000_3_10000_42/with_lincomb/s2pareto.dat","../benchmarks/mars/g_2000_13000_3_10000_42/without_lincomb/s2pareto.dat", yAxis="total_time", splitBy="comment", from=8, to=80)
-@
-\end{center}
-\caption{Influence of linear combination in Strategy2TaskStrategy::prioritize; min over 10 runs (g\_2000\_13000\_3\_10000\_42)}
-\end{figure}
-
-\begin{figure}
-\begin{center}
-<<fig=TRUE, echo=FALSE>>=
-plotOverCpus(
-"../benchmarks/mars/g_2000_13000_3_10000_42/with_lincomb/s2pareto.dat","../benchmarks/mars/g_2000_13000_3_10000_42/without_lincomb/s2pareto.dat", yAxis="total_time", splitBy="comment", aggFun=mean)
-@
-\end{center}
-\caption{Influence of linear combination in Strategy2TaskStrategy::prioritize; avg over 10 runs (g\_2000\_13000\_3\_10000\_42)}
-\end{figure}
-
-\begin{figure}
-\begin{center}
-<<fig=TRUE, echo=FALSE>>=
-plotBenchmark(
-"../benchmarks/mars/g_2000_13000_3_10000_42/improved_pop/before.dat","../benchmarks/mars/g_2000_13000_3_10000_42/improved_pop/after.dat", xAxis="cpus", yAxis="total_time", splitBy="comment")
-@
-\end{center}
-\caption{Improved PLTSBlock::pop (g\_2000\_13000\_3\_10000\_42)}
-\end{figure}
-
-\begin{figure}
-\begin{center}
-<<fig=TRUE, echo=FALSE>>=
-plotBenchmark(
-"../benchmarks/mars/g_2000_13000_3_10000_42/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/s2klsm.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/s2lsm.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/improved_put/s2pareto.dat", xAxis="cpus", yAxis="total_time", splitBy="comment")
-@
-\end{center}
-\caption{Improved PLTSBlock::put (g\_2000\_13000\_3\_10000\_42)}
-\end{figure}
-
-
-\begin{figure}
-\begin{center}
-<<fig=TRUE, echo=FALSE>>=
-plotBenchmark(
-"../benchmarks/mars/g_2000_13000_3_10000_42/strategy.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/s2klsm.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/s2lsm.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/s2pareto.dat", xAxis="cpus", yAxis="total_time", splitBy="algorithm")
-@
-\end{center}
-\caption{Abs.\ performance over nr.\ cpus (g\_2000\_13000\_3\_10000\_42)}
-\end{figure}
-
-\begin{figure}
-\begin{center}
-<<fig=TRUE, echo=FALSE>>=
-plotBenchmark(
-"../benchmarks/local/g_2000_13000_3_10000_42/baseline/strategy.dat", "../benchmarks/local/g_2000_13000_3_10000_42/baseline/strategy2.dat", xAxis="cpus", yAxis="total_time", splitBy="algorithm")
-@
-\end{center}
-\caption{Abs.\ performance over nr.\ cpus (g\_2000\_13000\_3\_10000\_42)}
-\end{figure}
-
-\begin{figure}
-\begin{center}
-<<fig=TRUE, echo=FALSE>>=
-plotBenchmark(
-"../benchmarks/mars/g_2000_13000_3_10000_42/mo_seq_cst/strategy2.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/mo_aq_rel/strategy2.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/mo_relaxed/strategy2.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/strategy.dat", xAxis="cpus", yAxis="total_time", splitBy="comment")
-@
-\end{center}
-\caption{Influence of memory order (g\_2000\_13000\_3\_10000\_42)}
-\end{figure}
-
-\begin{figure}
-\begin{center}
-<<fig=TRUE, echo=FALSE>>=
-plotOverCpus(
-"../benchmarks/mars/g_2000_13000_3_10000_42/mo_seq_cst/strategy2.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/mo_aq_rel/strategy2.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/mo_relaxed/strategy2.dat", yAxis="total_time", splitBy="comment", from=1, to=4)
-@
-\end{center}
-\caption{Influence of memory order, \#cpus=1-4 (g\_2000\_13000\_3\_10000\_42)}
-\end{figure}
-
-\begin{figure}
-\begin{center}
-<<fig=TRUE, echo=FALSE>>=
-plotOverCpus("../benchmarks/mars/g_2000_13000_3_10000_42/mo_seq_cst/strategy2.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/mo_aq_rel/strategy2.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/mo_relaxed/strategy2.dat", yAxis="total_time", splitBy="comment", from=4, to=80)
-@
-\end{center}
-\caption{Influence of memory order, \#cpus=4-80  (g\_2000\_13000\_3\_10000\_42)}
-\end{figure}
-
-\begin{figure}
-\begin{center}
-<<fig=TRUE, echo=FALSE>>=
-plotBenchmark(
-"../benchmarks/local/g_2000_13000_3_10000_42/max_partition_8/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/max_partition_16/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/max_partition_32/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/max_partition_64/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/max_partition_128/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/max_partition_256/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/max_partition_512/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/max_partition_1024/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/max_partition_4096/strategy2.dat",
-"../benchmarks/local/g_2000_13000_3_10000_42/baseline/strategy2.dat", xAxis="cpus", yAxis="total_time", splitBy="comment")
-@
-\end{center}
-\caption{Influence of MAX\_PARTITION\_SIZE (g\_2000\_13000\_3\_10000\_42)}
-\end{figure}
-
-\begin{figure}
-\begin{center}
-<<fig=TRUE, echo=FALSE>>=
-plotOverCpus("../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/16/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/32/s2pareto.dat",
-"../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/64/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/128/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/256/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/512/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/1024/s2pareto.dat",
-yAxis="total_time", splitBy="comment", from=1, to=3)
-@
-\end{center}
-\caption{Influence of MAX\_PARTITION\_SIZE (g\_2000\_13000\_3\_10000\_42)}
-\end{figure}
-
-\begin{figure}
-\begin{center}
-<<fig=TRUE, echo=FALSE>>=
-plotOverCpus("../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/16/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/32/s2pareto.dat",
-"../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/64/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/128/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/256/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/512/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/1024/s2pareto.dat",
-yAxis="total_time", splitBy="comment", from=4, to=7)
-@
-\end{center}
-\caption{Influence of MAX\_PARTITION\_SIZE (g\_2000\_13000\_3\_10000\_42)}
-\end{figure}
-
-\begin{figure}
-\begin{center}
-<<fig=TRUE, echo=FALSE>>=
-plotOverCpus("../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/16/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/32/s2pareto.dat",
-"../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/64/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/128/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/256/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/512/s2pareto.dat", "../benchmarks/mars/g_2000_13000_3_10000_42/MAX_PARTITION_SIZE/1024/s2pareto.dat",
-yAxis="total_time", splitBy="comment", from=8, to=80)
-@
-\end{center}
-\caption{Influence of MAX\_PARTITION\_SIZE (g\_2000\_13000\_3\_10000\_42)}
-\end{figure}
-
-\begin{figure}
-\begin{center}
-<<fig=TRUE, echo=FALSE>>=
-plotBenchmark("../benchmarks/local/g_2000_13000_3_10000_42/max_partition_128/strategy2.dat", "../benchmarks/local/g_2000_13000_3_10000_42/baseline/strategy.dat", xAxis="cpus", yAxis="total_time", splitBy="algorithm")
-@
-\end{center}
-\caption{Strategy2 with MAX\_PARTITION\_SIZE=128 vs.~Strategy (g\_2000\_13000\_3\_10000\_42)}
-\end{figure}
 
 %bibliography
 \bibliographystyle{acm}
