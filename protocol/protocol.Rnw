@@ -117,7 +117,7 @@ They outline a different advantage of using multi-dimensional priorities for tas
 Multi-dimensional priorities establish only a partial ordering on the tasks, which gives the scheduler more flexibility in terms of which task to execute next. 
 
 % Our work
-In this work, we investigate a potential implementation of such a multi-dimensional priority queue for the Pheet task scheduling framework, which is then used in turn for a parallel algorithm solving the MSP \footnote{This problem was suggested to us by our supervisor Martin Wimmer.}. 
+In this work, we investigate a potential implementation of such a multi-dimensional priority queue for the Pheet task scheduling framework, which is then used in turn for a parallel algorithm solving the MSP\footnote{This problem was suggested to us by our supervisor Martin Wimmer.}. 
 
 \todo{explain that we compare our priority queue to a solution based on linear combination+one dimensional priority queue,...}
 
@@ -346,6 +346,10 @@ The definition of weighted multigraphs is analogous to the definition of weighte
 We note that in contrast to the algorithms mentioned in Section \ref{sec:related}, our algorithm works on multigraphs as well and provide a comparative performance evaluation in Section \todo{well, where?}.
 
 \section{Pheet} \label{sec:pheet}
+% what we will do in this section
+
+In t
+
 
 \subsection{Task parallelism} \label{sec:pheet:task_parallelism}
 
@@ -416,7 +420,7 @@ For an overview of related work for the MCSP without parallelization, we refer t
 % Bi-criteria
 
 % Sonnier: approximate solutions for d \in {3,4}
-Sonnier \cite{Sonnier06} were \todo{only one author. Use plural nonetheless?} one of the first to publish parallel algorithms for solving MSP problems with 3 or 4 objectives. 
+Sonnier \cite{Sonnier06} were one of the first to publish parallel algorithms for solving MSP problems with 3 or 4 objectives. 
 Their algorithms are based on a weighted sum approach and thus provide only an approximate solution, i.e., the solution set may not contain all Pareto-optimal paths.
 
 % Sanders, Erb: first parallel MSP algo, but mostly for d=2
