@@ -211,10 +211,10 @@ Guerriero and Musmanno \cite{GuerrieroM01} thus suggest that parallel computing 
 Due to the hardness of the MSP, heuristic methods are sometimes employed (see, e.g., \cite{BastMS03, Sonnier06, EhrgottG02}).
 % weighted sum approach
 A common approach is to define a total order relation $\tor$ on $P$ that allows for a more efficient computation of the Pareto-optima.
-Such a relation $\tor$ has to satisfy the following properties:
+Such a relation $\tor$ has to satisfy the following properties\footnote{We denote the concatenation of two paths $p_1 \in P_{u,v}$, $p_2 \in P_{v,w}$ as $p_1 \cup p_2$. }:
 \begin{align}
 \forall p,q \in P_{u,v}: p \prec q \implies p \tor q  \quad \text{Dominance} \\
-\forall p \in P_{u,v}, \forall (v,w) \in A: p \tor p \cup \langle v,w \rangle \quad \text{Monotonic}
+\forall p \in P_{u,v}, \forall (v,w) \in A: p \tor p \cup \langle w \rangle \quad \text{Monotonic}
 \end{align}
 Martins et al.~\cite{MartinsPRS07} show that the following relation satisfies these requirements:
 \begin{align}
