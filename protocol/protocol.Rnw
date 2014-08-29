@@ -1,6 +1,8 @@
 \documentclass[a4paper,12pt]{article}
 \usepackage[utf8]{inputenc}
 
+\usepackage{algorithm}
+\usepackage{algpseudocode}
 \usepackage{comment}
 \usepackage{hyperref}
 \usepackage{cite}
@@ -30,17 +32,17 @@
 \usetikzlibrary{positioning}
 \usepackage{pgfplots}
 
+% a nice not implies
 \newcommand{\notimplies}{%
   \mathrel{{\ooalign{\hidewidth$\not\phantom{=}$\hidewidth\cr$\implies$}}}}
+  
+% todos  
 \newcommand\todo[1]{\textcolor{red}{TODO: #1}}
-\newcommand\load{L_{\mathrm{max}}}
+
+% number equations s.t. they can be referenced easily
 \newcommand\numberthis{\addtocounter{equation}{1}\tag{\theequation}}
 % within an align* environment, number and label the equation. #1 is the label text to be appended to eqn:
 \newcommand\neqn[1]{\numberthis\label{eq:#1}}
-% total order relation
-\newcommand{\tor}{\ensuremath{\leq_R}}
-\newcommand{\osum}{\ensuremath{\leq_{\text{sum}}}}
-\newcommand{\olex}{\ensuremath{\leq_{\text{lex}}}}
 
 % theorem, lemma, ...
 \newtheorem{lemma}{Lemma}
@@ -49,22 +51,41 @@
 \newtheorem{assumption}{Assumption}
 \newtheorem{definition}{Definition}
 
+% math stuff
 % vectors
 \newcommand{\vect}[1]{\vec{#1}}
 
+% total order relation
+\newcommand{\tor}{\ensuremath{\leq_R}}
+\newcommand{\osum}{\ensuremath{\leq_{\text{sum}}}}
+\newcommand{\olex}{\ensuremath{\leq_{\text{lex}}}}
+
+% sets
+\newcommand{\sC}{\ensuremath{S_{\text{c}}}}
+\newcommand{\sA}{\ensuremath{S_{\text{a}}}}
+\newcommand{\sR}{\ensuremath{S_{\text{r}}}}
+
+% concatenation of paths
+\newcommand{\cP}[2]{\ensuremath{#1;#2}}
+
+% style of listings
+\definecolor{Gray}{gray}{0.5}
+\definecolor{OliveGreen}{cmyk}{0.64,0,0.95,0.40}
 \lstset{
-    language=C,
+    language=C++,
     basicstyle=\ttfamily,
-    keywordstyle=\color{OliveGreen},
-    commentstyle=\color{Gray},
+    keywordstyle=\color{blue},
+    commentstyle=\color{OliveGreen},
     captionpos=b,
     breaklines=true,
     breakatwhitespace=false,
     showspaces=false,
     showtabs=false,
     numbers=left,
+    frame=lrtb,
 }
 
+% 
 \title{A multi-criteria priority queue for the Pheet task scheduling framework\\
 \normalsize Technical report for \\``Project in Software Engineering \& Internet Computing''
 }
@@ -72,7 +93,6 @@
 Vienna University of Technology}
 
 \begin{document}
-
 \maketitle
 
 %scale factor for graphs
@@ -83,6 +103,8 @@ Vienna University of Technology}
 \SweaveInput{functions.Rnw}
 @
 
+\pagebreak	
+
 \begin{abstract}
 \cite{Wimmer14} \todo{abstract}
 \end{abstract}
@@ -90,7 +112,7 @@ Vienna University of Technology}
 \pagebreak
 
 %TODO
-%\tableofcontents
+ \tableofcontents
 
 
 \section{Introduction} \label{sec:intro}
@@ -117,9 +139,13 @@ They outline a different advantage of using multi-dimensional priorities for tas
 Multi-dimensional priorities establish only a partial ordering on the tasks, which gives the scheduler more flexibility in terms of which task to execute next. 
 
 % Our work
-In this work, we investigate a potential implementation of such a multi-dimensional priority queue for the Pheet task scheduling framework, which is then used in turn for a parallel algorithm solving the MSP\footnote{This problem was suggested to us by our supervisor Martin Wimmer.}. 
+In this work, we investigate a potential implementation of such a multi-dimensional priority queue for the Pheet task scheduling framework, which is then used in turn for a parallel algorithm solving the MSP. 
+% MSP is not our focus
+We note here that the goal of our work is not to provide a better algorithm for the MSP; we investigate the potential of a multi-dimensional priority-aware task scheduler and use the MSP only as an example application.
+% Performance evaluation
+We make a comparison based performance evaluation by comparing the execution time of the MSP-algorithm employing different scheduler implementations: 
 
-\todo{explain that we compare our priority queue to a solution based on linear combination+one dimensional priority queue,...}
+\todo{lsm/klsm/strategy: linear combination; vs.\ pareto-queue}
 
 
 \subsubsection*{Outline} \label{sec:intro:outline}
@@ -147,7 +173,9 @@ The classic text book by Cormen et al.~\cite{CLRS01} provides a more detailed in
 % Define single-source shortest path
 \subsection{The classical shortest path problem} \label{sec:shortest_path:defs:sssp}
 We are given a weighted directed graph $G=(V,A)$, where $V= \{v_1, v_2, \dots, v_n\}$ is a finite set of nodes, $A \subseteq V \times V$ is a finite set of arcs (directed edges) and $c: A \rightarrow \mathbb{N}$ is the cost or weight function. 
+We define the set of neighbors of a node $v$ as the nodes adjacent to an outgoing arc of $v$, i.e., $\{w \in V \mid \exists a\in A, a = (v,w) \}$.
 W.l.o.g., we assume that $G$ is a connected graph.
+
 Let $p = \langle v_0, a_1, v_1, a_2, \dots,a_k, v_k \rangle$ be a path\footnote{We will also write $p = \langle v_0, v_1, \dots,v_k \rangle$ when not dealing with multigraphs, since an arc $a_i$ is well defined by its two adjacent nodes.}from $v_0$ to $v_k$ in $G$.
 Furthermore, let $P$ be the set of all paths and $P_{u,v}$ be the set of all paths from node $u$ to node $v$ in $G$.
 We define the weight $w(p)$ of a path $p$ as 
@@ -211,10 +239,10 @@ Guerriero and Musmanno \cite{GuerrieroM01} thus suggest that parallel computing 
 Due to the hardness of the MSP, heuristic methods are sometimes employed (see, e.g., \cite{BastMS03, Sonnier06, EhrgottG02}).
 % weighted sum approach
 A common approach is to define a total order relation $\tor$ on $P$ that allows for a more efficient computation of the Pareto-optima.
-Such a relation $\tor$ has to satisfy the following properties\footnote{We denote the concatenation of two paths $p_1 \in P_{u,v}$, $p_2 \in P_{v,w}$ as $p_1 \cup p_2$. }:
+Such a relation $\tor$ has to satisfy the following properties\footnote{We denote the concatenation of two paths $p_1 \in P_{u,v}$, $p_2 \in P_{v,w}$ as $\cP{p_1}{p_2}$}
 \begin{align}
 \forall p,q \in P_{u,v}: p \prec q \implies p \tor q  \quad \text{Dominance} \\
-\forall p \in P_{u,v}, \forall (v,w) \in A: p \tor p \cup \langle w \rangle \quad \text{Monotonic}
+\forall p \in P_{u,v}, \forall (v,w) \in A: p \tor \cP{p}{w} \quad \text{Monotonic}
 \end{align}
 Martins et al.~\cite{MartinsPRS07} show that the following relation satisfies these requirements:
 \begin{align}
@@ -314,6 +342,9 @@ f: A &\rightarrow (u,v) \text{ where } u,v \in V \quad .
 \end{align}
 
 The definition of weighted multigraphs is analogous to the definition of weighted graphs given in Eq.~\ref{eq:msp_weighted}. 
+
+% our algorithm works on multigraphs too!
+\todo{This should go somewhere else - it certainly does not belong to the formal definitions}
 We note that in contrast to the algorithms mentioned in Section \ref{sec:related}, our algorithm works on multigraphs as well and provide a comparative performance evaluation in Section \todo{well, where?}.
 
 \section{Pheet} \label{sec:pheet}
@@ -368,6 +399,8 @@ This is due to e.g., new tasks being created during the execution and/or the non
 Task scheduling itself is a vast and active area of research with many different variations in the problem setting and models.
 Since we do not deal with any complex scheduling in this work, we refrain from giving a more elaborate introduction and refer the reader to the Wimmer's dissertation\cite{Wimmer14}, which contains several pointers to the literature.
 
+\todo{explain a bit about StrategyScheduling?}
+
 \subsubsection{Work stealing} \label{sec:pheet:work_stealing}
 
 \subsubsection{Task priorities} \label{sec:pheet:task_priorites}
@@ -375,25 +408,202 @@ Since we do not deal with any complex scheduling in this work, we refrain from g
 \subsubsection{Priority scheduling} \label{sec:pheet:priority_sched}
 ``Priority scheduling differs from normal scheduling due to the fact that the order in which tasks are executed is decoupled from the order in which they are created.'' \cite{Wimmer14}, page 40.
 
+\subsubsection{Strategy 2 scheduler} \label{sec:pheet:strategy2sched}
+
 \subsubsection{Dead tasks} \label{sec:pheet:dead_tasks}
 
-\section{Bits and pieces}
+\subsection{lsm, klsm and strategy scheduling}
 
-% pareto priority queue idea
+\section{Bits and pieces}
+%Node
+\todo{do we really need this? or can we assume that it is known/intuitively understandable?}
 \begin{comment}
-A Pareto priority queue ensures that that the next task to be executed is a Pareto optimum, i.e., a task for which the partial solution is not dominated by the partial solution of any other task - from MW diss
+\begin{minipage}[c]{\linewidth}
+\begin{lstlisting}[label=lst:Node, caption=Basic structure and operations of Node.]
+class Node {
+  /* All nodes adjacent to an outgoing arc of this Node. */
+  Set<Node> neighbors();
+}
+\end{lstlisting}
+\end{minipage}
+
+% Path
+\begin{minipage}[c]{\linewidth}
+\begin{lstlisting}[label=lst:Path, caption=Basic structure and operations of Path.]
+class Path {
+  Path step(Arc a);
+  Node tail();
+  Node head();
+  Weight_Vector weight();
+  bool dominated;
+}
+\end{lstlisting}
+\end{minipage}
 \end{comment}
+% pareto priority queue idea
+%\begin{comment}
+A Pareto priority queue ensures that that the next task to be executed is a Pareto optimum, i.e., a task for which the partial solution is not dominated by the partial solution of any other task \cite{Wimmer14}
 
 \subsection{Memory model}
 \todo{explain C++ memory consistency model: required for implementation of Pareto-queue}
 
+\section{Multi-criteria shortest path algorithm} \label{sec:msp_algo}
+% what we do in this section
+In this section, we present our algorithm for the MSP.
+% Problem setting
+We want to compute an exact solution of the MSP for directed graphs with multi-dimensional weight vectors (as defined in Section \ref{sec:shortest_path:defs:msp}). 
+% Intro to the algorithm: generalization of Dijkstra
+The algorithm follows the principles of Dijkstra's algorithm (we generate a set of candidates and expand the most promising first), where the problem of finding intermediate paths that are Pareto-optimal is delegated to a priority queue. 
+Our algorithm relies on the Pheet task scheduling framework for parallelization and, in particular, on Pheet's concept of \emph{priority task scheduling} (Section \ref{sec:pheet:priority_sched}), which allows to combine the work pool of the scheduler with the priority queue used by the algorithm into one data structure: a priority-aware task scheduler.
+
+% Works with different schedulers/task storages
+We designed the algorithm s.t.~it may easily employ different task scheduler implementations without any major changes to the algorithm itself. 
+Within this framework, we only have to provide implementations of 
+\begin{inparaenum}[(i)]
+\item the task and 
+\item a scheduling strategy.
+\end{inparaenum}
+
+% The algorithm is label-correcting (no strict sequence; furthermore, we have a set of solutions for each node)
+
+% Explain graph class?
 
 
-\section{Multi-criteria shortest path} \label{sec:msp_algo}
-\todo{Our algorithm for the MSP. The algorithm works independently of the scheduler}
 
-\section{Using the StrategyScheduler/linear combination} \label{sec:strategyScheduler}
-\todo{\cite{MartinsPRS07} has a theorem showing that linear combination is a valid choice, but probably better to cite \cite{PaixaoS13}.}
+% Abstract description of the algorithm
+\begin{algorithm}
+\caption{Pseudo-code for our MSP algorithm}
+\label{algo:abstractMSP}
+\begin{algorithmic}[1]
+\Require{Graph $G$, start node $s$}
+\ForAll{$v \in G$}
+  \State $S_p[v] \gets \{\}$ \Comment{Initialize the Pareto-set for each node}
+\EndFor
+\State $S_p[s] \gets \{ \vect{0} \} $ \Comment{Shortest path from $s$ to $s$ is the null-vector}
+\State $U \gets \{\langle s \rangle\}$ \Comment{Set of paths that need to be explored further}
+\While{$U$ is not empty}
+  \State Take path $p$ from $U$ 
+  \State \Call{expand}{$p$}
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+\caption{Pseudo-code for expanding a candidate path}
+\label{algo:abstractExpand}
+\begin{algorithmic}[1]
+\Require{$S_p[v]$: Set of Pareto-optimal paths to node $v$ ($\forall v\in V$)}
+\Require{$U$: Set of paths that need to be explored further}
+\Require{$p=\langle s, \dots, v \rangle$ is a path in Graph $G$ from start node $s$ to $v$}
+\Function{expand}{Path $p$}
+\ForAll{$w \in p$.head.neighbors} 
+  \State $p' \gets \cP{p}{w}$	\Comment{Generate candidate}
+  \If{$\nexists x \in S_p[w] \text{ s.t.\ } x \prec p'$} 
+  \Statex \Comment{Candidate is not dominated by any path in the Pareto-set}
+    \ForAll{$y\in S_p[w]$} \Comment{Remove any path dominated by $p'$}
+      \If{$p' \prec y$}
+	\State $S_p[w] \gets S_p[w] \setminus y$
+      \EndIf
+    \EndFor
+    \State $S_p[w] \gets S_p[w] \cup p'$ \Comment{Add $p'$ to the Pareto-set for node $w$}
+    \State $U \gets U \cup p'$ \Comment{$p'$ needs to be explored further}
+  \EndIf
+\EndFor
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+% Explain the pareto set
+\begin{minipage}[c]{\linewidth}
+\begin{lstlisting}[label=lst:ParetoSet, caption=Pareto set operations.]
+class ParetoSet {
+  /* Insert p into the Pareto-set. Any path p' that is dominated by p will be marked dominated and removed from the set. If p is dominated by a path p' already in the set, p will be marked domianted and will not be inserted into the set. */
+  bool insert(Path p);
+
+  /* Get all the paths stored in this Pareto-set. */
+  Set<Path> paths();
+}
+\end{lstlisting}
+\end{minipage}
+
+% Msp task
+\begin{minipage}[c]{\linewidth}
+\begin{lstlisting}[label=lst:MspTask, caption=MSP Task.]
+class Task {
+public:
+  Task(Path p, ParetoSets Sp) //Constructor. Save parameters.
+      : p(p), Sp(Sp) { }
+  
+  void execute() {
+    /* The path this task was spawned for might be obsolete. */
+    if(p.dominated) return;	
+    Set<Path> candidates;
+    /* Generate new candidates */
+    for (Arc a : p.head().outgoing_edges()) {
+      Path q = p.step(e);
+      candidates.insert(q);
+    }
+    /* Add the candidates to the global pareto sets */
+    Set<Path> added;
+    added = Sp.insert(candidates);
+    for (Path p : added) {
+      if(!p.dominated()) {
+	/* Spawn a new task for each added path */
+	spawn_task(p, Sp);
+      }
+    }
+  }
+private:
+  Path p;
+  ParetoSets Sp;
+}
+\end{lstlisting}
+\end{minipage}
+
+\begin{comment}
+% Msp task
+\begin{algorithm}
+\caption{MSP Task}
+\label{algo:msptask}
+\begin{algorithmic}[1]
+   \Function{initialize}{Graph $g$, Path $p$, Pareto\_Sets $s$} 
+      \State $\sC \gets \{\}$ \Comment{Set of candidates a task generates}
+      \State $\dots$  \Comment{Store $g$, $p$ and $s$ for this instance of Task}
+   \EndFunction
+  \Statex
+  \Function{execute}{}
+    \If{$p$ is dominated} 
+      \State return	\Comment{This task instance is obsolete}
+    \EndIf
+    \State Node $h \gets p$.head	\Comment{The last node of path $p$}
+    \ForAll{$v \in h$.neighbors} \Comment{All neighbors of $h$}
+      \State $\sC = \sC \cup \cP{p}{v}$ \Comment{Generate candidates}
+    \EndFor
+    \State $\sA \gets s$.insert(\sC) \Comment{Inserts the generated candidates into global Pareto set}
+    \Statex \Comment{$\sA$ contains candidates not dominated by any path in $s$}
+    \ForAll{$p\in \sA$}
+      spawn\_task($g$, $p$, $s$) \Comment{Spawn a new task for each candidate}
+    \EndFor
+  \EndFunction
+\end{algorithmic}
+\end{algorithm}
+\end{comment}
+
+The following implementation variants are provided:
+\begin{itemize}
+% \item \verb|SequentialMsp|:
+% \item \verb|StrategyMsp|:
+\item \verb|Strategy2MspLSM|:
+% \item \verb|Strategy2MspKLSM|:
+\item \verb|Strategy2MspPareto|:
+\end{itemize}
+
+% sequential algorithm: uses a priority queue
+
+% StrategyScheduler: 
+
+% Strategy2Scheduler, variants:
+
 
 \section{Multi-criteria priority queue} \label{sec:mcpq}
 \todo{Description and analysis of: virtual array, log-structured list, put/pop, top, steal,\dots}
@@ -466,9 +676,100 @@ While they give a high level description of the algorithm for arbitrary $d \geq 
 \section{Acknowledgements} \label{sec:ack}
 \todo{...}
 
+
 %bibliography
 \bibliographystyle{acm}
 \bibliography{sources} 
-\end{document}
 
-  
+
+
+%tmp plots
+\section{Plots}
+\subsection{28.08.}
+
+\begin{figure}[H]
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotOverCpus(
+"../benchmarks/local/g_2000_13000_3_10000_42/08_28/base/s2pareto.dat",
+"../benchmarks/local/g_2000_13000_3_10000_42/08_28/1/s2pareto.dat",
+"../benchmarks/local/g_2000_13000_3_10000_42/08_28/2/s2pareto.dat",
+"../benchmarks/local/g_2000_13000_3_10000_42/08_28/3/s2pareto.dat",
+"../benchmarks/local/g_2000_13000_3_10000_42/08_28/4/s2pareto.dat",
+yAxis="total_time", from=1, to=80)
+@
+\end{center}
+\caption{Improvements on 28-08}
+\end{figure}
+
+\begin{figure}[H]
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotOverCpus(
+"../benchmarks/local/g_2000_13000_3_10000_42/08_28/s2pareto.dat",
+"../benchmarks/local/g_2000_13000_3_10000_42/08_28/strategy.dat",
+"../benchmarks/local/g_2000_13000_3_10000_42/08_28/s2lsm.dat",
+"../benchmarks/local/g_2000_13000_3_10000_42/08_28/s2klsm.dat",
+yAxis="total_time", from=1, to=80)
+@
+\end{center}
+\caption{s2pareto vs.\ s2lsm vs.\ s2klsm vs.\ strategy}
+\end{figure}
+
+\begin{figure}[H]
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotOverCpus(
+"../benchmarks/local/g_2000_13000_3_10000_42/08_28/s2pareto.dat",
+"../benchmarks/local/g_2000_13000_3_10000_42/08_28/strategy.dat",
+"../benchmarks/local/g_2000_13000_3_10000_42/08_28/s2lsm.dat",
+"../benchmarks/local/g_2000_13000_3_10000_42/08_28/KDSet/s2pareto.dat",
+"../benchmarks/local/g_2000_13000_3_10000_42/08_28/KDSet/strategy.dat",
+"../benchmarks/local/g_2000_13000_3_10000_42/08_28/KDSet/s2lsm.dat",
+yAxis="total_time", from=1, to=80)
+@
+\end{center}
+\caption{Each strategy/task storage with NaiveSet and KDSet}
+\end{figure}
+
+\begin{figure}[H]
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotOverCpus(
+"../benchmarks/local/g_2000_13000_3_10000_42/08_28/s2pareto.dat",
+"../benchmarks/local/g_2000_13000_3_10000_42/08_28/lincomb/s2pareto.dat",
+yAxis="total_time", from=1, to=80)
+@
+\end{center}
+\caption{s2pareto with lincomb and pareto strategy}
+\end{figure}
+
+
+\subsection{29.08.}
+\begin{figure}[H]
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotOverCpus(
+"../benchmarks/local/g_2000_13000_3_10000_42/08_28/s2pareto.dat",
+"../benchmarks/local/g_2000_13000_3_10000_42/08_29/1/s2pareto.dat",
+yAxis="total_time", from=1, to=80)
+@
+\end{center}
+\caption{Set path dominated in NaiveSet if necessary}
+\end{figure}
+
+\begin{figure}[H]
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotOverCpus(
+"../benchmarks/mars/g_2000_13000_3_10000_42/08_29/s2pareto.dat",
+"../benchmarks/mars/g_2000_13000_3_10000_42/08_29/s2lsm.dat",
+"../benchmarks/mars/g_2000_13000_3_10000_42/08_29/s2klsm.dat",
+"../benchmarks/mars/g_2000_13000_3_10000_42/08_29/strategy.dat",
+yAxis="total_time", from=1, to=80)
+@
+\end{center}
+\caption{Different strategyies/task storages on mars}
+\end{figure}
+
+\end{document}
