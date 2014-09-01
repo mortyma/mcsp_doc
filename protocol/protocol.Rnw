@@ -292,6 +292,7 @@ p &\mapsto \vect{w}(p) = (w_1(p), w_2(p), \dots , w_d(p)) \quad , \neqn{msp_weig
 \end{align*}
 where $w_j(p) = \sum_{i=1}^{k}c_j(a_i)$ $\forall j \in \{1,\dots,d\}$.
 
+\todo{This needs to be moved up}
 %Domination relation
 Let $\vect{x}$ and $\vect{y}$ be two vectors of dimension $d$, i.e., $\vect{x}, \vect{y} \in \mathbb{N}^d$ and $\vect{x} \neq \vect{y}$. 
 We say that $\vect{x}$ \emph{dominates} $\vect{y}$ ($\vect{x} \prec \vect{y}$) -- or equivalently, $\vect{y}$ \emph{is dominated by} $\vect{x}$ -- if and only if
