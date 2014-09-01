@@ -298,7 +298,7 @@ We say that $\vect{x}$ \emph{dominates} $\vect{y}$ ($\vect{x} \prec \vect{y}$) -
 \begin{align}
 \forall j \in \{1,\dots, d\}: w_j(x) \leq w_j(y) \quad .
 \end{align}
-Note that the dominance relation ($\prec$) does not define a total ordering in $\mathbb{R}^d$ for $d\geq 2$.
+Note that the dominance relation ($\prec$) does not define a total ordering in $\mathbb{N}^d$ for $d\geq 2$.
 Thus, there exist vectors $\vect{x}, \vect{y} \in \mathbb{N}^d$, $\vect{x} \neq \vect{y}$ for which neither $\vect{x} \prec \vect{y}$ nor $\vect{y} \prec \vect{x}$ holds.
 
 % Notes
