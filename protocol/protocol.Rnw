@@ -211,6 +211,113 @@ This mechanism is useful for speculative execution: A task may be spawned when i
 Pheet handles dead tasks lazily, i.e., a dead task will not be dropped immediately but at a time it is convenient for the scheduler to do so, which allows for a more efficient implementation of the scheduler's data structures.
 
 \section{Pareto optima} \label{sec:pareto}
+% Informally describe the problem
+Given a set of vectors, the \emph{maximal vector problem} is to find the subset of vectors s.t.\ each vector of the subset is not dominated by any vector of the set. 
+One vector dominates another if each of its components is equal to or smaller than (w.r.t.\ some partial ordering of the vectors) the corresponding component of the other vector, and strictly smaller in at least one component.
+Such a maximal element is called \emph{Pareto-optimal} and the set of maxima is called the \emph{Pareto-set}. 
+
+% Example
+Figure \ref{fig:pareto_optima} illustrates the concept of Pareto-optimality. 
+A formal definition is provided in the following.
+
+\begin{figure}
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[xlabel=$w_1$, ylabel=$w_2$, enlargelimits=0.2, nodes near coords]
+\addplot[mark=*, point meta=explicit symbolic, color=blue]
+  table {
+x	y
+1	7.8
+1.5	7.2
+1.6	7
+2.2	6.5
+2.2	6
+2.9	5.5
+3.8	4.5
+4	4.4
+4.7	4.3
+5	4
+};
+
+\addplot[mark=*, only marks, point meta=explicit symbolic, color=black]
+  table {
+x	y
+1.3	7.8
+2.4	7
+2.8	6
+3.2	7.1
+4	5
+4	7.7
+4.3	6
+4.6	7.4
+5	5
+
+
+};
+
+\addplot[mark=*, point meta=explicit symbolic, color=blue] 
+coordinates {
+	(2.9, 5.5) [A]
+};
+\draw[blue,dashed] (axis cs:2.9,5.5) -- (axis cs:0,5.5);
+\draw[blue,dashed] (axis cs:2.9,5.5) -- (axis cs:2.9,0);
+
+\addplot[mark=*, point meta=explicit symbolic, color=blue] 
+coordinates {
+	(3.8, 4.5) [B]
+};
+\draw[blue,dashed] (axis cs:3.8, 4.5) -- (axis cs:0,4.5);
+\draw[blue,dashed] (axis cs:3.8, 4.5) -- (axis cs:3.8,0);
+
+\addplot[mark=*, point meta=explicit symbolic, color=black] 
+coordinates {
+	(3.2, 6.2) [C]
+};
+\draw[black,dashed] (axis cs:3.2, 6.2) -- (axis cs:0,6.2);
+\draw[black,dashed] (axis cs:3.2, 6.2) -- (axis cs:3.2,0);
+
+\addplot[mark=*, point meta=explicit symbolic, color=black] 
+coordinates {
+	(3.5, 5.2) [D]
+};
+\draw[black,dashed] (axis cs:3.4, 5.2) -- (axis cs:0,5.2);
+\draw[black,dashed] (axis cs:3.4, 5.2) -- (axis cs:3.4,0);
+
+\end{axis}
+\end{tikzpicture}
+\end{center}
+\caption{Example of a Pareto-set in two-dimensional space: The set of Pareto-optimal vectors are in blue, others in black. Note that point C is dominated by A in both dimensions ($w_1(A) < w_1(C)$ and $w_2(A) < w_2(C)$). D is dominated by A in dimension 1 and by B in dimension 2; either condition on its own suffices for D not being Pareto-optimal.}
+\label{fig:pareto_optima}
+\end{figure}
+
+\subsubsection*{Formal definition}
+% Formal problem definition
+Let $U_1, U_2,\dots , U_d$ be totally ordered sets (e.g., $\mathbb{N}$) and let $V$ be a set of $d$-dimensional vectors in $U_1 \times U_2 \times \dots \times U_d$.
+For any $\vect{v} \in V$, we donate the $i$-th component of $\vect{v}$ by $w_i(\vect{v})$.
+
+% Domination relation
+Let $\vect{x}, \vect{y} \in V$. 
+We say that $\vect{x}$ \emph{dominates} $\vect{y}$ ($\vect{x} \prec \vect{y}$) -- or equivalently, $\vect{y}$ \emph{is dominated by} $\vect{x}$ -- if and only if
+\begin{align}
+&\forall i \in \{1,\dots, d\}: w_i(x) \leq w_i(y) \quad \text{and}\\
+&\exists j \in \{1,\dots, d\}: w_j(x) < w_j(y) \quad .
+\end{align}
+Note that $\vect{x} \prec \vect{y} $ implies $\vect{x} \neq \vect{y}$.
+For $d\geq 2$, the dominance relation ($\prec$) defines a partial order on $V$, but not a total order.
+Thus, there exist vectors $\vect{x}, \vect{y} \in V$, $\vect{x} \neq \vect{y}$ for which neither $\vect{x} \prec \vect{y}$ nor $\vect{y} \prec \vect{x}$ holds.
+
+% Pareto optima
+A vector $\vect{x} \in V$ is a \emph{Pareto-optimum} if and only if
+\begin{align}
+\nexists \vect{v} \in V: \vect{v} \prec \vect{x} \quad ,
+\end{align}
+i.e., there is no vector $\vect{v}$ that dominates $\vect{x}$.
+%Pareto set
+A \emph{Pareto-set} $P \subseteq V$ is the set of all Pareto-optima of $V$.
+
+% Cite some work 
+The Pareto-set can be computed in linear expexted-time, as shown in \cite{BentleyCL93}.
+
 
 % Main part of the work
 \section{Multi-criteria priority queue} \label{sec:mcpq}
@@ -245,7 +352,7 @@ class Path {
 
 % pareto priority queue idea
 %\begin{comment}
-A Pareto priority queue ensures that that the next task to be executed is a Pareto optimum, i.e., a task for which the partial solution is not dominated by the partial solution of any other task \cite{Wimmer14}
+ \cite{Wimmer14}
 
 % What does the scheduler do?
 The task parallel model is independent of any machine specifics such as the number of processors and the memory hierarchy.
@@ -310,7 +417,7 @@ Note that an optimal algorithm for the SSSP can easily be turned into an optimal
 Thus, we will only deal with the SSSP in this report.
 
 \subsection{Multi-criteria shortest path (MSP)} \label{sec:shortest_path:defs:msp}
-%MSP
+% MSP
 Multi-criteria shortest path problems \cite{Martins84} generalize shortest path problems w.r.t.~the weight function $c$, which is extended to $d$-dimensional vectors, i.e., $\vect{c}: A \rightarrow \mathbb{N}^d$ and
 \begin{align*}
 \vect{w}: P &\rightarrow \mathbb{N}^d \\
@@ -318,17 +425,7 @@ p &\mapsto \vect{w}(p) = (w_1(p), w_2(p), \dots , w_d(p)) \quad , \neqn{msp_weig
 \end{align*}
 where $w_j(p) = \sum_{i=1}^{k}c_j(a_i)$ $\forall j \in \{1,\dots,d\}$.
 
-\todo{This needs to be moved up}
-%Domination relation
-Let $\vect{x}$ and $\vect{y}$ be two vectors of dimension $d$, i.e., $\vect{x}, \vect{y} \in \mathbb{N}^d$ and $\vect{x} \neq \vect{y}$. 
-We say that $\vect{x}$ \emph{dominates} $\vect{y}$ ($\vect{x} \prec \vect{y}$) -- or equivalently, $\vect{y}$ \emph{is dominated by} $\vect{x}$ -- if and only if
-\begin{align}
-\forall j \in \{1,\dots, d\}: w_j(x) \leq w_j(y) \quad .
-\end{align}
-Note that the dominance relation ($\prec$) does not define a total ordering in $\mathbb{N}^d$ for $d\geq 2$.
-Thus, there exist vectors $\vect{x}, \vect{y} \in \mathbb{N}^d$, $\vect{x} \neq \vect{y}$ for which neither $\vect{x} \prec \vect{y}$ nor $\vect{y} \prec \vect{x}$ holds.
-
-% Notes
+% Pareto optima
 A path $p$ from node $v_1$ to node $v_2$ is a \emph{Pareto-optimal} or \emph{non-dominated} path if there is no path $q \in P$ from $v_1$ to $v_2$ s.t.~$q \prec p$.
 Informally, we also call a Pareto-optimal path $p$ \emph{shortest path}.
 Thus, for the MSP, the solution consists of a set of Pareto-optimal paths for each considered pair of nodes.
