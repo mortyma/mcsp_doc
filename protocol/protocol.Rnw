@@ -127,7 +127,7 @@ One is used by the scheduling framework to maintain tasks that are yet to be exe
 
 % Priority task scheduling
 \emph{Priority task scheduling}, introduced by Wimmer et al.~\cite{WVTCT13}, addresses this problem by making the preferred execution order of tasks known to the scheduler. 
-To achieve this, the task scheduler utilizes a concurrent priority queue which fulfills the ordering requirements imposed by the algorithm by assigning discrete priority values to the tasks.
+To achieve this, the task scheduler utilizes a concurrent priority queue which fulfills the ordering requirements imposed by the algorithm by assigning comparison-based priority values to the tasks.
 Wimmer \cite{Wimmer14} further states that a scheduler based on the task priority scheduling model allows for an efficient parallel implementation of any algorithm relying on priority queues is possible.
 They back up their claim by providing a parallel implementation of Dijkstra's algorithm on top of Pheet, which utilizes a scheduler based on the priority task scheduling model.
 
@@ -140,6 +140,7 @@ Multi-dimensional priorities establish only a partial ordering on the tasks, whi
 In this work, we investigate a potential implementation of such a multi-dimensional priority queue for the Pheet task scheduling framework, which is then used in turn for a parallel algorithm solving the MSP. 
 % MSP is not our focus
 We note here that the goal of our work is not to provide a better algorithm for the MSP; we investigate the potential of a multi-dimensional priority-aware task scheduler and use the MSP only as an example application.
+
 % Performance evaluation
 We make a comparison based performance evaluation by comparing the execution time of the MSP-algorithm employing different scheduler implementations: 
 
@@ -153,8 +154,7 @@ In Section \ref{sec:pheet}, we provide a general introduction to the Pheet task 
 \todo{...}
 \section{Pheet} \label{sec:pheet}
 % what we will do in this section
-In this section, we provide a general introduction to Pheet-related and -specific concepts that are relevant for this technical report. 
-
+In this section, we provide a brief introduction to Pheet-specific concepts that are relevant for this technical report. 
 % reference Martin's dissertation
 A detailed introduction to Pheet, the concepts it is built on and the research based on it can be found in the dissertation of Martin Wimmer \cite{Wimmer14}. 
 
@@ -164,61 +164,55 @@ Pheet is a task-parallel programming library with the goal of providing a simple
 Its flexible plug-in architecture based on C++ template meta-programming allows for any component in the task scheduling system to be replaced by an alternative implementation.
 Additionally, Pheet provides a set of micro-benchmarks (that aim to evaluate specific aspects of the scheduling framework) and fine grained performance counters (that provide detailed insight into the scheduler and supporting data structures), which makes the framework a suitable platform for the implementation and testing of new components such as schedulers or priority queues. 
 
-\subsection{Concepts} \label{sec:pheet:concepts}
+%\subsection{Concepts} \label{sec:pheet:concepts}
 
-\subsubsection{Places} \label{sec:pheet:places}
-A \emph{place}\cite{Wimmer14} denotes a single worker thread in the Pheet scheduling system that is pinned to specific processor, that is, a place will not migrate to another processing unit during execution.
-Each processor utilized by Pheet is assigned exactly one place, implying a one-to-one correspondence of places and processors. 
-By uniquely identifying processors, places simplify the implementation of parellel algorithms and data structures.
+\subsubsection*{Places} \label{sec:pheet:places}
+A \emph{place} denotes a single worker thread in the Pheet scheduling system that is pinned to specific processor, that is, a place will not migrate to another processing unit during execution.
+Each processor utilized by Pheet is assigned exactly one place, implying that a processor is uniquely identified by a place, which may be very useful for the implementation of parallel algorithms.
+Furthermore, a place allows to implement processor-local data structures, e.g., parts of a distributed priority queue or application specific data structures and data accessible by the tasks that are executed on the associated processor.
 
-Furthermore, places are employed to deal with aspects related to the memory hierarchy as well as locality. 
-However, as those concepts are not considered in our contribution, we refer the interested reader to the work of Wimmer\cite{Wimmer14}.
-
-
-\subsubsection{Task parallelism} \label{sec:pheet:task_parallel}
+\subsubsection*{Task parallelism} \label{sec:pheet:task_parallel}
 % work pool
 Pheet is based on the \emph{task-parallel model}, where a task is a small portion of work that is to be executed sequentially.
 As soon as a processor is ready to execute work, it retrieves a task from the \emph{work pool}, which contains all the tasks that have yet to be executed.
 A task may itself create additional tasks that are then stored in the work pool.
 
 A famous algorithm based on the work pool pattern is Dijkstra's algorithm \cite{Dijkstra59} for the shortest path problem:
-The algorithm requires a priority queue (that may be implemented as e.g., a simple binary search tree or a Fibonacci heap), which is but a work pool.
-
-% task parallelism
-Additionally, the programmer may define dependencies between the tasks which ensure that a task is not executed before all required prerequisites are met; if, however, two tasks do not depend on each other, they may be executed in parallel (or sequentially in arbitrary order).
+The algorithm requires a priority queue (that may be implemented as e.g., a simple binary search tree or a Fibonacci heap). This priority queue is a specialized work pool.
 
 Note that in a task parallel program, the work pool is not necessarily a centralized data structure; each place may maintain its own. 
-Furthermore, once place starts executing a task, the task will stay at this place until its execution is finished. 
 
-\subsection{Task priorities}  \label{sec:pheet:task_priorites}
-
-\subsubsection{Strategy scheduling} \label{sec:pheet:scheduling}
+\subsubsection*{Task priorities and strategy scheduling}  \label{sec:pheet:task_priorites}
 % What does the scheduler do?
-The task parallel model is independent of any machine specifics. 
-It merely exposes the available work to the \emph{scheduler}, which is responsible for devising a schedule, i.e., a mapping of tasks to the processors such that the partial order of the tasks is maintained, thereby determining which processor executes a task as well as the execution order of the tasks. 
+The work pool exposes available work to the \emph{scheduler}, which is responsible for devising a schedule, i.e., a mapping of tasks to the processors.
+% Global scheduling strategy
+In standard task-parallel programming models, the scheduler typically employs a global policy that treats all tasks equally and thus independently of any task-specific properties.
 
-\subsubsection{Dead tasks} \label{sec:pheet:dead_tasks}
+% Task priorities 
+Wimmer introduced the concept of \emph{task priorities} to make the scheduler aware of the preferred (relative) execution order of tasks. 
+% Discrete priorities
+One approach to handling priorities is to assign a discrete priority value (typically taken form a small set) to each task. 
+% Comparison based prioritization
+Another is a comparison based approach, where the programmer has to provide a comparator to the scheduler, that, given two tasks, decides which to execute first.
 
-\begin{comment}
-% Online/offline scheduling; what is used in Pheet and why
-The schedulers developed for Pheet employ \emph{online scheduling}, where -- in contrast to \emph{offline scheduling} -- the schedule cannot be precomputed statically, since not all the required information is available before the execution.
-This is due to e.g., new tasks being created during the execution and/or the nondeterministic execution time of tasks.
-
-% Explain that we don't explain scheduling
-Task scheduling itself is a vast and active area of research with many different variations in the problem setting and models.
-Since we do not deal with any complex scheduling in this work, we refrain from giving a more elaborate introduction and refer the reader to the Wimmer's dissertation\cite{Wimmer14}, which contains several pointers to the literature.
-\end{comment}
-
-
+% Scheduling strategy
+In Pheet, this comparator has to be implemented within the \emph{scheduling strategy} of a task.
+A scheduling strategy is associated with a single task and may specify behavior that is depending on task specific criteria.
+In contrast to a global scheduling policy, a scheduling strategy is associated with a single task and thus allows the programmer to influence the scheduler's behavior for a specific task.
+% Dead tasks
+An important application of this concept is the mechanism of \emph{dead tasks}, which allows to mark a spawned but not yet executed (or currently executing) task as obsolete. 
+This mechanism is useful for speculative execution: A task may be spawned when it is likely that the work will of the task will have to be performed sometime in the future; when further calculations determine that the task need not be executed after all, the task can be marked dead via its associated strategy, thus instructing the scheduler not to execute the task.
+Pheet handles dead tasks lazily, i.e., a dead task will not be dropped immediately but at a time it is convenient for the scheduler to do so, which allows for a more efficient implementation of the scheduler's data structures.
 
 % Main part of the work
 \section{Multi-criteria priority queue} \label{sec:mcpq}
 \todo{Description and analysis of: virtual array, log-structured list, put/pop, top, steal,\dots}
 
+\begin{comment}
 \section{Bits and pieces}
 %Node
 \todo{do we really need this? or can we assume that it is known/intuitively understandable?}
-\begin{comment}
+
 \begin{minipage}[c]{\linewidth}
 \begin{lstlisting}[label=lst:Node, caption=Basic structure and operations of Node.]
 class Node {
@@ -240,11 +234,35 @@ class Path {
 }
 \end{lstlisting}
 \end{minipage}
-\end{comment}
+
 % pareto priority queue idea
 %\begin{comment}
 A Pareto priority queue ensures that that the next task to be executed is a Pareto optimum, i.e., a task for which the partial solution is not dominated by the partial solution of any other task \cite{Wimmer14}
 
+% What does the scheduler do?
+The task parallel model is independent of any machine specifics such as the number of processors and the memory hierarchy.
+It merely exposes the available work to the \emph{scheduler}, which is responsible for devising a schedule , i.e., a mapping of tasks to the processors, thereby determining which processor executes a task as well as the execution order of the tasks. 
+The scheduler 
+
+% Online/offline scheduling; what is used in Pheet and why
+The schedulers developed for Pheet employ \emph{online scheduling}, where -- in contrast to \emph{offline scheduling} -- the schedule cannot be precomputed statically, since not all the required information is available before the execution.
+This is due to e.g., new tasks being created during the execution and/or the nondeterministic execution time of tasks.
+
+% Explain that we don't explain scheduling
+Task scheduling itself is a vast and active area of research with many different variations in the problem setting and models.
+Since we do not deal with any complex scheduling in this work, we refrain from giving a more elaborate introduction and refer the reader to the Wimmer's dissertation\cite{Wimmer14}, which contains several pointers to the literature.
+% task parallelism
+Additionally, the programmer may define dependencies between the tasks which ensure that a task is not executed before all required prerequisites are met; if, however, two tasks do not depend on each other, they may be executed in parallel (or sequentially in arbitrary order).
+\todo{the above is quite general and does not really relate to the rest of the work or pheet.}
+
+Furthermore, once a place starts executing a task, the task will stay at this place until its execution is finished. 
+
+%This is not relevant
+By uniquely identifying processors, places simplify the implementation of parellel algorithms and data structures.
+
+Furthermore, places are employed to deal with aspects related to the memory hierarchy as well as locality. 
+However, as those concepts are not considered in our contribution, we refer the interested reader to the work of Wimmer\cite{Wimmer14}.
+\end{comment}
 
 \section{Shortest path problems} \label{sec:shortest_path}
 % Informally introduce shortest path
@@ -762,7 +780,7 @@ plotOverCpus(
 yAxis="total_time", from=1, to=80)
 @
 \end{center}
-\caption{Different strategyies/task storages on mars}
+\caption{Different strategies/task storages on mars}
 \end{figure}
 
 \end{document}
