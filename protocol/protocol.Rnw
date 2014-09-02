@@ -122,7 +122,7 @@ and is based on the task-parallel programming model, which allows a programmer t
 % The build-up for task priorities
 Runtime systems based on the task-parallel model typically impose a non-adaptive, application independent execution order on the tasks where the scheduler is unaware of the preferred execution order of the tasks (The tasks are processed in, e.g., LIFO-order).
 % The problem with Dijkstra's algorithm
-While it has proven to be an efficient strategy for parallelization \todo{citation needed}, this approach has not been particularly useful for the parallelization of algorithms relying on priority queues (such as Dijkstra's famous algorithm for the single-source shortest path problem (SSSP) \cite{Dijkstra59}), since two work pools have to be maintained: 
+While it has proven to be an efficient strategy for parallelization \cite{AroraBP01}, this approach has not been particularly useful for the parallelization of algorithms relying on priority queues (such as Dijkstra's famous algorithm for the single-source shortest path problem (SSSP) \cite{Dijkstra59}), since two work pools have to be maintained: 
 One is used by the scheduling framework to maintain tasks that are yet to be executed; the other is required by the algorithm itself to determine the execution order of the tasks.
 
 % Priority task scheduling
