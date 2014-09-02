@@ -435,14 +435,14 @@ Thus, an \emph{approximate solution set} provides a ``reasonable'' set of non-do
 \begin{center}
 \begin{tikzpicture}
 \begin{axis}[xlabel=$w_1$, ylabel=$w_2$, nodes near coords, enlargelimits=0.2]
-	\addplot+[color=blue, mark=*, point meta=explicit symbolic] 
+	\addplot[color=blue, mark=*, point meta=explicit symbolic] 
 	coordinates {
 		(5,5) [$p_1$]
 		(4,6) [$p_2$]
 		(3,7) [$p_3$]
 		(2,8) [$p_4$]
 	};
-	\addplot+[color=red, mark=*, point meta=explicit symbolic] 
+	\addplot[color=red, mark=*, point meta=explicit symbolic] 
 	coordinates {
 		(3.8,6.8) [$p_5$]
 	};
