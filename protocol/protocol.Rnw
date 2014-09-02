@@ -148,10 +148,14 @@ We make a comparison based performance evaluation by comparing the execution tim
 
 
 \subsubsection*{Outline} \label{sec:intro:outline}
-We give a formal definition of the multi-criteria shortest path problem in Section \ref{sec:shortest_path}, where we also discusses the hardness of the problem.
-In Section \ref{sec:pheet}, we provide a general introduction to the Pheet task scheduling framework and a more detailed presentation of the concepts used in Pheet that are relevant for this work.
+In Section \ref{sec:pheet}, we provide a high-level introduction of Pheet-related concepts relevant for this work. 
+Section \ref{sec:pareto} gives a formal definition of Pareto-optimality, followed by a detailed presentation and analysis of our multi-criteria priority queue (Section \ref{sec:mcpq}).
+We give a formal definition of the multi-criteria shortest path problem, which is used as an example application, in Section \ref{sec:shortest_path}, where we also discuss the hardness of the problem.
+A detailed description of our Pheet-based algorithm solving the MSP will be given in Section \ref{sec:msp_algo}. 
+This implementation is then used to compare the performance of our multi-criteria priority queue to other priority queue implementations already available in Pheet (Section \ref{sec:evaluation}).
 
-\todo{...}
+\todo{Related work, Future work, conclusion,...}
+
 \section{Pheet} \label{sec:pheet}
 % what we will do in this section
 In this section, we provide a brief introduction to Pheet-specific concepts that are relevant for this technical report. 
@@ -203,6 +207,8 @@ In contrast to a global scheduling policy, a scheduling strategy is associated w
 An important application of this concept is the mechanism of \emph{dead tasks}, which allows to mark a spawned but not yet executed (or currently executing) task as obsolete. 
 This mechanism is useful for speculative execution: A task may be spawned when it is likely that the work will of the task will have to be performed sometime in the future; when further calculations determine that the task need not be executed after all, the task can be marked dead via its associated strategy, thus instructing the scheduler not to execute the task.
 Pheet handles dead tasks lazily, i.e., a dead task will not be dropped immediately but at a time it is convenient for the scheduler to do so, which allows for a more efficient implementation of the scheduler's data structures.
+
+\section{Pareto optima} \label{sec:pareto}
 
 % Main part of the work
 \section{Multi-criteria priority queue} \label{sec:mcpq}
@@ -619,7 +625,7 @@ The following implementation variants are provided:
 
 
 
-\section{Performance evaluation} \label{sec:eval}
+\section{Performance evaluation} \label{sec:evaluation}
 
 % Mars hardware
 For performance evaluation, we used a shared memory system nicknamed \emph{Mars}, an Intel Xeon based system with the properties listed in Table \ref{table:mars}.
