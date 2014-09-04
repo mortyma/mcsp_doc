@@ -151,7 +151,7 @@ We make a comparison based performance evaluation by comparing the execution tim
 
 \subsubsection*{Outline} \label{sec:intro:outline}
 In Section \ref{sec:pheet}, we provide a high-level introduction of Pheet-related concepts relevant for this work. 
-Section \ref{sec:pareto} gives a formal definition of Pareto-optimality, followed by a detailed presentation and analysis of our multi-criteria priority queue (Section \ref{sec:mcpq}).
+Section \ref{sec:pareto_optima} gives a formal definition of Pareto-optimality, followed by a detailed presentation and analysis of our multi-criteria priority queue (Section \ref{sec:mcpq}).
 We give a formal definition of the multi-criteria shortest path problem, which is used as an example application, in Section \ref{sec:shortest_path}, where we also discuss the hardness of the problem.
 A detailed description of our Pheet-based algorithm solving the MSP will be given in Section \ref{sec:msp_algo}. 
 This implementation is then used to compare the performance of our multi-criteria priority queue to other priority queue implementations already available in Pheet (Section \ref{sec:evaluation}).
@@ -210,7 +210,7 @@ An important application of this concept is the mechanism of \emph{dead tasks}, 
 This mechanism is useful for speculative execution: A task may be spawned when it is likely that the work will of the task will have to be performed sometime in the future; when further calculations determine that the task need not be executed after all, the task can be marked dead via its associated strategy, thus instructing the scheduler not to execute the task.
 Pheet handles dead tasks lazily, i.e., a dead task will not be dropped immediately but at a time it is convenient for the scheduler to do so, which allows for a more efficient implementation of the scheduler's data structures.
 
-\section{Pareto optima} \label{sec:pareto}
+\section{Pareto optima} \label{sec:pareto_optima}
 % Informally describe the problem
 Given a set of vectors, the \emph{maximal vector problem} is to find the subset of vectors s.t.\ each vector of the subset is not dominated by any vector of the set. 
 One vector dominates another if each of its components is equal to or smaller than (w.r.t.\ some partial ordering of the vectors) the corresponding component of the other vector, and strictly smaller in at least one component.
@@ -292,15 +292,15 @@ coordinates {
 
 \subsubsection*{Formal definition}
 % Formal problem definition
-Let $U_1, U_2,\dots , U_d$ be totally ordered sets (e.g., $\mathbb{N}$) and let $V$ be a set of $d$-dimensional vectors in $U_1 \times U_2 \times \dots \times U_d$.
+Let $U_1, U_2,\dots , U_d$ be totally ordered sets with a binary comparison function $<_i$ (e.g., $\mathbb{N}$ and the ``smaller than'' function) and let $V$ be a set of $d$-dimensional vectors in $U_1 \times U_2 \times \dots \times U_d$.
 For any $\vect{v} \in V$, we donate the $i$-th component of $\vect{v}$ by $w_i(\vect{v})$.
 
 % Domination relation
 Let $\vect{x}, \vect{y} \in V$. 
 We say that $\vect{x}$ \emph{dominates} $\vect{y}$ ($\vect{x} \prec \vect{y}$) -- or equivalently, $\vect{y}$ \emph{is dominated by} $\vect{x}$ -- if and only if
 \begin{align}
-&\forall i \in \{1,\dots, d\}: w_i(x) \leq w_i(y) \quad \text{and}\\
-&\exists j \in \{1,\dots, d\}: w_j(x) < w_j(y) \quad .
+&\forall i \in \{1,\dots, d\}: w_i(x) \leq_i w_i(y) \quad \text{and}\\
+&\exists j \in \{1,\dots, d\}: w_j(x) <_i w_j(y) \quad .
 \end{align}
 Note that $\vect{x} \prec \vect{y} $ implies $\vect{x} \neq \vect{y}$.
 For $d\geq 2$, the dominance relation ($\prec$) defines a partial order on $V$, but not a total order.
