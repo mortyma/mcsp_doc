@@ -71,19 +71,35 @@
 % style of listings
 \definecolor{Gray}{gray}{0.5}
 \definecolor{OliveGreen}{cmyk}{0.64,0,0.95,0.40}
-\lstset{
-    language=C++,
-    basicstyle=\ttfamily,
-    keywordstyle=\color{blue},
-    commentstyle=\color{OliveGreen},
-    captionpos=b,
-    breaklines=true,
-    breakatwhitespace=false,
-    showspaces=false,
-    showtabs=false,
-    numbers=left,
-    frame=lrtb,
-}
+
+   \lstset{
+      language=C++,
+      basicstyle=\ttfamily\footnotesize,
+      keywordstyle=\color{blue},
+      commentstyle=\color{OliveGreen},
+      breaklines=true,
+      breakatwhitespace=false,
+      showspaces=false,
+      showtabs=false,
+      numbers=left,
+      frame=single,
+      captionpos=t,
+  }
+
+\lstnewenvironment{code}[1][]%
+{
+   \noindent
+   \minipage{\linewidth} 
+   \vspace{0.5\baselineskip}
+   \lstset{
+      #1
+  }
+  }
+   %\lstset{basicstyle=\ttfamily\footnotesize,frame=single,#1}}
+{\endminipage}
+
+%\DeclareCaptionFormat{mylst}{\hrule#1#2#3}
+%\captionsetup[code]{format=mylst,labelfont=bf,singlelinecheck=off,labelsep=space}
 
 % 
 \title{A multi-criteria priority queue for the Pheet task scheduling framework\\
@@ -174,7 +190,7 @@ Additionally, Pheet provides a set of micro-benchmarks (that aim to evaluate spe
 
 \subsubsection*{Places} \label{sec:pheet:places}
 A \emph{place} denotes a single worker thread in the Pheet scheduling system that is pinned to specific processor, that is, a place will not migrate to another processing unit during execution.
-Each processor utilized by Pheet is assigned exactly one place, implying that a processor is uniquely identified by a place, which may be very useful for the implementation of parallel algorithms.
+Each processor utilized by Pheet is assigned exactly one place, implying that a processor is uniquely identified by it, which may be very useful for the implementation of parallel algorithms.
 Furthermore, a place allows to implement processor-local data structures, e.g., parts of a distributed priority queue or application specific data structures and data accessible by the tasks that are executed on the associated processor.
 
 \subsubsection*{Task parallelism} \label{sec:pheet:task_parallel}
@@ -321,7 +337,209 @@ The Pareto-set can be computed in linear expexted-time, as shown in \cite{Bentle
 
 % Main part of the work
 \section{Multi-criteria priority queue} \label{sec:mcpq}
-\todo{Description and analysis of: virtual array, log-structured list, put/pop, top, steal,\dots}
+% What do we do in this section
+In this section, we present our multi-criteria priority queue (MCPQ) for Pheet. 
+
+% General description
+% What is the MCPQ
+The goal of the MCPQ is to provide a concurrent priority queue that can then be used by Pheet's strategy scheduler (see Section \ref{sec:pheet:task_priorites}) to determine the execution order of tasks with multi-dimensional priorities.
+We will refer to the multi-dimensional priority of a task as a \emph{priority vector}, which may in general be a vector of the form described in Section \ref{sec:pareto_optima}. 
+We map the mathematical concept to an object as shown in Listing \ref{lst:priority_vector}, with \verb|PriorityValue| representing a value from a domain $U_i$ for $1 \leq i \leq d$.
+We will use this representation of a priority vector when referencing it in pseudo-code. 
+
+% PriorityVector
+\begin{code}[label=lst:priority_vector, caption=PriorityVector]
+/* To be implemented by the application. */
+class PriorityVector {
+
+  /* Get the priority value at dimension d */
+  PriorityValue priority_at(int d);
+  
+  /* Return true if this priority vector at dimension d has a priority value smaller than v */
+  bool less_priority(int d, PriorityValue v);
+  
+  /* Return true if this priority vector at dimension d has a priority value greater than v */
+  bool greater_priority(int d; PriorityValue v);
+}
+\end{code}
+
+% Outline
+The first subsections will provide a high-level, somewhat abstract discussion of the MCPQ, in particular of the requirements and major design choices (Section \ref{sec:mcpq:definition}), the integration into Pheet (Section \ref{sec:mcpq:pheet_integration}) and a white-box description via its interfaces (Section \ref{sec:mcpq:interface}). 
+\todo{Outline next subsections}
+
+\subsection{Definition and requirements} \label{sec:mcpq:definition}
+% Abstract datastructure description
+On an abstract level, the MCPQ is an \emph{ordered container} (as defined by Wimmer \cite{Wimmer14}), i.e., a bag-like data structure offering the following operations:
+\begin{itemize}
+\item \verb|push| adds an item\footnote{The ``item'' will be an atomic reference to a task.} to the container.
+\item \verb|pop| returns an item that was previously added and removes it from the container. The order in which items are returned is determined by their priority.
+\end{itemize}
+
+% MCPQ used to store tasks; 
+The MCPQ is used to store a set of tasks that are ready to execute.
+% Priorities and partial solutions
+The priority of a task reflects the potential quality of the (partial) solutions it will produce upon execution.
+By using multi-dimensional priority vectors, the quality of a solution may be measured by several, possibly conflicting metrics\footnote{We refer to our algorithm for the multi-criteria shortest path problem (definition see Section \ref{sec:shortest_path:defs:msp}; algorithm see Section \ref{sec:msp_algo}) for a concrete application of this rather abstract concept.}. 
+% Priority of task == desirability of execution
+Obviously, it is desirable to execute the tasks that will produce (partial) solutions with the highest potential quality (i.e., tasks with highest priority) before other tasks.
+% Pareto
+Since each task is associated with a multi-dimensional priority vector, the tasks with highest priorities are the ones with a Pareto-optimal\footnote{A formal definition and detailed explanation of Pareto-optimality can be found in Section \ref{sec:pareto_optima}.} priority vector (w.r.t.\ the set of priority vectors of tasks \emph{currently} managed by the queue).
+We can restate the semantics of the \verb|pop|-operation as follows: \verb|pop| returns a ready-task with a Pareto-optimal priority vector.
+
+% concurrent DS
+A priority queue for Pheet needs to be able to handle \emph{concurrent} accesses by multiple threads since each thread will fetch tasks to execute from the queue and insert newly generated tasks into the queue.
+
+\subsubsection*{Ordering requirements} \label{sec:mcpq:ordering}
+% ordering semantics  
+The semantic definition of the \verb|pop| operation as given above requires that \emph{all} threads agree on the set of tasks with Pareto-optimal priority.
+This implies that all the \verb|push| and \verb|pop| operations executed by different threads need to appear to take affect in the same order for each thread, i.e., they need to be linearizable w.r.t.\ all the threads.
+While these \emph{global ordering} semantics match the intuitive expectation, they also pose a (potentially big) performance bottleneck. 
+Accordingly, our priority queue implementation does not adhere to global ordering semantics; instead, \emph{purely local ordering} semantics are employed: Each thread maintains its own priority queue on which all the \verb|push| and \verb|pop| operations are executed.
+Thus, a task returned by \verb|pop| has a Pareto-optimal priority only w.r.t.\ the tasks in the same local priority queue, while the priority queue of another thread might contain a task whose priority vector dominates the one of the task returned by \verb|pop|.
+Due to the local ordering semantics, a thread might execute unnecessary additional work (since the solutions created by the task will be of much lower quality than the ones created by task with a dominating priority vector). 
+However, this negative effect is countered by increased parallelism and less overhead due to synchronization.
+
+\subsubsection*{Spying} \label{sec:mcpq:stealing}
+% Spying
+When a thread does not have any more ready-tasks in its local priority queue, it will try to \emph{steal} some from the priority queue of another thread. 
+The operations of the stealing thread are linearized with the ones of all the other threads on the same priority queue.
+
+\subsubsection*{Other stuff}
+\todo{This does not really fit here}
+Furthermore, such a \emph{distributed} implementation of the MCPQ avoids performance bottlenecks inherent to centralized data structures.
+
+% lock- and wait-free
+ To provide good progress guarantees, the MCPQ is implemented as a lock- and wait-free data structure. 
+\todo{More here? or just refer to diss. p. 49? This last sentence doesn't fit anyway}
+
+\subsection{Integration in Pheet} \label{sec:mcpq:pheet_integration}
+% Strategy scheduler 2
+Pheet's \verb|StrategyScheduler2|, a \emph{two-level concurrent ordered container} (described in detail in \cite{Wimmer14}, Section 5.5) allows for a quick integration of our MCPQ into the scheduling framework.
+% Base classes provided; pheet terminology
+It offers base classes for alternative \emph{task storage}\footnote{In Pheet terminology, a priority queue managing tasks is called a task storage.} implementations.
+% The classes we us.
+In particular, to integrate the MCPQ into the Pheet scheduling framework, we will be extending the following classes:
+\begin{inparaenum}
+\item \verb|Strategy2BaseTaskStorageBaseItem|,
+\item \verb|Strategy2BaseTaskStoragePlace| and
+\item \verb|Strategy2BaseTaskStorage|.
+\end{inparaenum}
+We will give an intuitive understanding of their functionality required by our implementation together with a detailed description of the classes extending those base classes in the following. 
+For a detailed description of the base classes and correctness proofs, we refer the reader to \cite{Wimmer14}.
+
+\subsection{High level description and interfaces} \label{sec:mcpq:interface}
+% A general, high level overview and interfaces
+The class \verb|ParetoItem| (Listing \ref{lst:PTSItem}) is used to represent tasks managed by scheduler. It references an object of type \verb|SchedulerTask| (Listing \ref{lst:SchedulerTask})(which contains the code to be executed, i.e., the work the task is to perform) and an object implementing the \verb|ParetoStrategy|-interface (Listing \ref{lst:ParetoStrategy}) (which handles the priority of the task).
+
+The \verb|ParetoItem| class has to guarantee that it's \verb|take| operation returns the referenced task exactly once, even if multiple threads execute it concurrently. 
+Although an item is at first only visible to the thread creating it (also called the \emph{owning} place), this may change after another thread performs a \verb|steal| operation on the priority queue of the owning place.
+The base class \verb|BaseItem| provides some functionality for memory re-usage and serves as an interface for \verb|StrategyScheduler2|, which is oblivious of the task storage implementation.	
+
+% ParetoItem
+\begin{code}[label=lst:PTSItem, caption=Interface of ParetoItem]
+class ParetoItem : BaseItem {
+
+  /* The task to execute. */
+  SchedulerTask task;
+  
+  /* The strategy associated with the task. */
+  ParetoStrategy strategy;
+  
+  /* If false, no thread is processing this item yet. */
+  atomic<bool> taken;
+  
+  /* Get the task referenced by this item if it is not taken. A task may be taken only once. */
+  SchedulerTask take();
+}
+\end{code}
+
+The \verb|SchedulerTask| and \verb|ParetoStrategy| classes have to be implemented by the application employing the scheduler, i.e., the application programmer.
+While the former contains the code to be executed upon execution of the task, the latter provides access to the priority vector associated with a task.
+Furthermore, the function \verb|priorizite|, given another \verb|ParetoStrategy| object, decides which of the two has higher priority. 
+The \verb|dead_task| function is used by the scheduler to query whether the associated task may be dropped without being executed\footnote{This feature is called ``speculative execution'' is described in Section \ref{sec:pheet:task_priorites}}.
+Both functions will be used by our task storage implementation to order tasks w.r.t.\ their associated priorities.
+
+% Task
+\begin{code}[label=lst:SchedulerTask, caption=Interface of SchedulerTask]
+/* To be implemented by the application. The code in execute() will be run when the task is executed. */
+class SchedulerTask {
+
+  void execute();
+}
+\end{code}
+
+% Strategy
+\begin{code}[label=lst:ParetoStrategy, caption=Interface of ParetoStrategy]
+/* To be implemented by the application. */
+class  {
+
+  void initialize(PriorityVector v);
+  
+  PriorityVector priority_vector();
+  
+  /* Return true if the priority vector of this strategy is not dominated by the priority vector of other. */
+  bool prioritize(ParetoStrategy other);
+  
+  /* Return true if the associated task is marked as dead; i.e., if it needn't be executed anymore. */
+  bool dead_task();
+}
+\end{code}
+
+The central -- or global -- part of the MCQP is implemented in \verb|ParetoTaskStorage| (Listing \ref{lst:ParetoTaskStorage}), which is mostly used for rerouting \verb|pop| and \verb|steal| operations to the place-local parts of the MCPQ, implemented in \verb|ParetoTaskStoragePlace| (Listing \ref{lst:ParetoTaskStoragePlace}). 
+% boundary
+Notice that the \verb|pop| and \verb|steal| operations of both classes have an additional parameter called the boundary item. 
+The \verb|StrategyScheduler2| maintains its own LIFO priority queue\footnote{This is necessary for some advanced features the base data structures provide. We do not require them, they are not introduced in this report.} and the boundary item would be the next item selected by \verb|pop|/\verb|steal| according to this order.
+However, this default behavior may be overridden within certain limits: 
+\begin{itemize}
+\item The \verb|pop|/\verb|steal| operation may select other items with a \emph{higher} priority than the boundary item, thereby violating the LIFO order. Since we are using multi-dimensional priority vector, this means that the priority associated with the selected item may not be dominated by the priority of the task referenced by the boundary item.
+\item The \verb|pop| operation must not return a \verb|SchedulerTask| if the boundary item was already taken by another thread in the meantime.
+\end{itemize}
+
+% TaskStoragePlace
+\begin{code}[label=lst:ParetoTaskStoragePlace, caption=Interface of ParetoTaskStoragePlace]
+/* The place-local part of the MCPQ. */
+class ParetoTaskStoragePlace : Strategy2BaseTaskStoragePlace {
+
+  /* Add the given item to the task storage. */
+  void push(ParetoItem item);
+  
+  /* Get an item with locally non-dominated priority and remove it from the task storage. */
+  SchedulerTask pop(ParetoItem boundary);
+  
+  /* Get an item (with locally non-dominated priority) by stealing it from another place. */
+  SchedulerTask steal(ParetoItem boundary, ParetoTastStoragePlace other_place);
+}
+\end{code}
+
+% TaskStorage
+\begin{code}[label=lst:ParetoTaskStorage, caption=Implementation of ParetoTaskStorage]
+/* The global part of the MCPQ. Calls to pop and steal are simply forwarded to the responsible places. */
+class ParetoTaskStorage : Strategy2BaseTaskStorage {
+
+  ParetoTaskStoragePlace[] places;
+  
+  SchedulerTask pop(ParetoItem boundary, int place_id) {
+    return places[place_id].pop(boundary);
+  }
+  
+  SchedulerTask steal(ParetoItem boundary, int place_id) {
+    return places[place_id].steal(boundary);
+  }
+}
+\end{code}
+
+\subsection{Implementation and analysis} \label{sec:mcpq:impl_analysis}
+
+% Virtual Array
+\subsubsection*{Virtual array} \label{sec:virtual_array}
+% Motivation
+
+% Interface
+\begin{code}[label=lst:MspTask, caption=Virtual array]
+class VirtualArray {
+public:
+}
+\end{code}
 
 \begin{comment}
 \section{Bits and pieces}
@@ -335,7 +553,7 @@ class Node {
   Set<Node> neighbors();
 }
 \end{lstlisting}
-\end{minipage}
+\end{algorithm}
 
 % Path
 \begin{minipage}[c]{\linewidth}
@@ -348,7 +566,7 @@ class Path {
   bool dominated;
 }
 \end{lstlisting}
-\end{minipage}
+\end{algorithm}
 
 % pareto priority queue idea
 %\begin{comment}
@@ -632,8 +850,7 @@ Within this framework, we only have to provide implementations of
 \end{algorithm}
 
 % Explain the pareto set
-\begin{minipage}[c]{\linewidth}
-\begin{lstlisting}[label=lst:ParetoSet, caption=Pareto set operations.]
+\begin{code}[label=lst:ParetoSet, caption=Pareto set operations.]
 class ParetoSet {
   /* Insert p into the Pareto-set. Any path p' that is dominated by p will be marked dominated and removed from the set. If p is dominated by a path p' already in the set, p will be marked domianted and will not be inserted into the set. */
   bool insert(Path p);
@@ -641,15 +858,17 @@ class ParetoSet {
   /* Get all the paths stored in this Pareto-set. */
   Set<Path> paths();
 }
-\end{lstlisting}
-\end{minipage}
+\end{code}
 
 % Msp task
-\begin{minipage}[c]{\linewidth}
-\begin{lstlisting}[label=lst:MspTask, caption=MSP Task.]
-class Task {
+%\begin{minipage}[c]{\linewidth}
+%\begin{algorithm}
+%\label{lst:MSPTask}
+\begin{code}[caption=MSP Task, label=MSP Task]
+class MSPTask : SchedulerTask {
 public:
-  Task(Path p, ParetoSets Sp) //Constructor. Save parameters.
+
+  MSPTask(Path p, ParetoSets Sp) //Constructor. Save parameters.
       : p(p), Sp(Sp) { }
   
   void execute() {
@@ -675,8 +894,8 @@ private:
   Path p;
   ParetoSets Sp;
 }
-\end{lstlisting}
-\end{minipage}
+\end{code}
+%\end{algorithm}
 
 \begin{comment}
 % Msp task
