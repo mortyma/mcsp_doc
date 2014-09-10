@@ -55,6 +55,13 @@
 % vectors
 \newcommand{\vect}[1]{\vec{#1}}
 
+% dominance relation
+\newcommand{\dom}{\ensuremath{\prec}}
+% less relation
+\newcommand{\less}{\ensuremath{\prec}}
+\newcommand{\lesseq}{\ensuremath{\preceq}}
+\newcommand{\moreeq}{\ensuremath{\succeq}}
+
 % total order relation
 \newcommand{\tor}{\ensuremath{\leq_R}}
 \newcommand{\osum}{\ensuremath{\leq_{\text{sum}}}}
@@ -256,24 +263,24 @@ coordinates {
 
 \subsubsection*{Formal definition}
 % Formal problem definition
-Let $U_1, U_2,\dots , U_d$ be totally ordered sets with a binary comparison function $<_i$ (e.g., $\mathbb{N}$ and the ``smaller than'' function) and let $V$ be a set of $d$-dimensional vectors in $U_1 \times U_2 \times \dots \times U_d$.
+Let $U_1, U_2,\dots , U_d$ be totally ordered sets, each with the binary relations $\less_i$  and $=_i$, (e.g., $\mathbb{N}$ and the ``smaller than'' and ``equals'' relations) and let $V$ be a set of $d$-dimensional vectors in $U_1 \times U_2 \times \dots \times U_d$.
 For any $\vect{v} \in V$, we donate the $i$-th component of $\vect{v}$ by $w_i(\vect{v})$.
 
 % Domination relation
 Let $\vect{x}, \vect{y} \in V$. 
-We say that $\vect{x}$ \emph{dominates} $\vect{y}$ ($\vect{x} \prec \vect{y}$) -- or equivalently, $\vect{y}$ \emph{is dominated by} $\vect{x}$ -- if and only if
+We say that $\vect{x}$ \emph{dominates} $\vect{y}$ ($\vect{x} \dom \vect{y}$) -- or equivalently, $\vect{y}$ \emph{is dominated by} $\vect{x}$ -- if and only if
 \begin{align}
-&\forall i \in \{1,\dots, d\}: w_i(x) \leq_i w_i(y) \quad \text{and}\\
-&\exists j \in \{1,\dots, d\}: w_j(x) <_i w_j(y) \quad .
+&\forall i \in \{1,\dots, d\}: w_i(x) \lesseq_i w_i(y) \quad \text{and}\\
+&\exists j \in \{1,\dots, d\}: w_j(x) \less_i w_j(y) \quad .
 \end{align}
-Note that $\vect{x} \prec \vect{y} $ implies $\vect{x} \neq \vect{y}$.
-For $d\geq 2$, the dominance relation ($\prec$) defines a partial order on $V$, but not a total order.
-Thus, there exist vectors $\vect{x}, \vect{y} \in V$, $\vect{x} \neq \vect{y}$ for which neither $\vect{x} \prec \vect{y}$ nor $\vect{y} \prec \vect{x}$ holds.
+Note that $\vect{x} \dom \vect{y} $ implies $\vect{x} \neq \vect{y}$ and that the binary relation $\moreeq_i$ can easily be defined by the other two relations.
+For $d\geq 2$, the dominance relation ($\dom$) defines a partial order on $V$, but not a total order.
+Thus, there exist vectors $\vect{x}, \vect{y} \in V$, $\vect{x} \neq \vect{y}$ for which neither $\vect{x} \dom \vect{y}$ nor $\vect{y} \dom \vect{x}$ holds.
 
 % Pareto optima
 A vector $\vect{x} \in V$ is a \emph{Pareto-optimum} if and only if
 \begin{align}
-\nexists \vect{v} \in V: \vect{v} \prec \vect{x} \quad ,
+\nexists \vect{v} \in V: \vect{v} \dom \vect{x} \quad ,
 \end{align}
 i.e., there is no vector $\vect{v}$ that dominates $\vect{x}$.
 %Pareto set
@@ -762,7 +769,7 @@ p &\mapsto \vect{w}(p) = (w_1(p), w_2(p), \dots , w_d(p)) \quad , \neqn{msp_weig
 where $w_j(p) = \sum_{i=1}^{k}c_j(a_i)$ $\forall j \in \{1,\dots,d\}$.
 
 % Pareto optima
-A path $p$ from node $v_1$ to node $v_2$ is a \emph{Pareto-optimal} or \emph{non-dominated} path if there is no path $q \in P$ from $v_1$ to $v_2$ s.t.~$q \prec p$.
+A path $p$ from node $v_1$ to node $v_2$ is a \emph{Pareto-optimal} or \emph{non-dominated} path if there is no path $q \in P$ from $v_1$ to $v_2$ s.t.~$q \dom p$.
 Informally, we also call a Pareto-optimal path $p$ \emph{shortest path}.
 Thus, for the MSP, the solution consists of a set of Pareto-optimal paths for each considered pair of nodes.
 
@@ -793,7 +800,7 @@ Due to the hardness of the MSP, heuristic methods are sometimes employed (see, e
 A common approach is to define a total order relation $\tor$ on $P$ that allows for a more efficient computation of the Pareto-optima.
 Such a relation $\tor$ has to satisfy the following properties\footnote{We denote the concatenation of two paths $p_1 \in P_{u,v}$, $p_2 \in P_{v,w}$ as $\cP{p_1}{p_2}$}
 \begin{align}
-\forall p,q \in P_{u,v}: p \prec q \implies p \tor q  \quad \text{Dominance} \\
+\forall p,q \in P_{u,v}: p \dom q \implies p \tor q  \quad \text{Dominance} \\
 \forall p \in P_{u,v}, \forall (v,w) \in A: p \tor \cP{p}{w} \quad \text{Monotonic}
 \end{align}
 Martins et al.~\cite{MartinsPRS07} show that the following relation satisfies these requirements:
@@ -803,7 +810,7 @@ p \osum q \iff \sum_{i=1}^{d} w_i(p) \leq  \sum_{i=1}^{d} w_i(q)
 % supported/non-supported solutions
 However, as Sonnier \cite{Sonnier06} points out, a problem with algorithms based on such a relation is that 
 \begin{align}
-p \osum q  \notimplies p \prec q \quad , \neqn{osum_problem}
+p \osum q  \notimplies p \dom q \quad , \neqn{osum_problem}
 \end{align}
 i.e., only solutions that lie on the convex hull of the feasible region are found, which are called the supported solutions. 
 In other words, there exist Pareto-optima which may not be found because of the property given in Eq.~\ref{eq:osum_problem}.
@@ -952,10 +959,10 @@ Within this framework, we only have to provide implementations of
 \Function{expand}{Path $p$}
 \ForAll{$w \in p$.head.neighbors} 
   \State $p' \gets \cP{p}{w}$	\Comment{Generate candidate}
-  \If{$\nexists x \in S_p[w] \text{ s.t.\ } x \prec p'$} 
+  \If{$\nexists x \in S_p[w] \text{ s.t.\ } x \dom p'$} 
   \Statex \Comment{Candidate is not dominated by any path in the Pareto-set}
     \ForAll{$y\in S_p[w]$} \Comment{Remove any path dominated by $p'$}
-      \If{$p' \prec y$}
+      \If{$p' \dom y$}
 	\State $S_p[w] \gets S_p[w] \setminus y$
       \EndIf
     \EndFor
