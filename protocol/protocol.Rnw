@@ -174,58 +174,6 @@ This implementation is then used to compare the performance of our multi-criteri
 
 \todo{Related work, Future work, conclusion,...}
 
-\section{Pheet} \label{sec:pheet}
-% what we will do in this section
-In this section, we provide a brief introduction to Pheet-specific concepts that are relevant for this technical report. 
-% reference Martin's dissertation
-A detailed introduction to Pheet, the concepts it is built on and the research based on it can be found in the dissertation of Martin Wimmer \cite{Wimmer14}. 
-
-\subsubsection*{Philosophy} \label{sec:pheet:philosophy}
-% How is pheet implemented, what are its goals?
-Pheet is a task-parallel programming library with the goal of providing a simple-to-use framework for the quick parallelization of algorithms.
-Its flexible plug-in architecture based on C++ template meta-programming allows for any component in the task scheduling system to be replaced by an alternative implementation.
-Additionally, Pheet provides a set of micro-benchmarks (that aim to evaluate specific aspects of the scheduling framework) and fine grained performance counters (that provide detailed insight into the scheduler and supporting data structures), which makes the framework a suitable platform for the implementation and testing of new components such as schedulers or priority queues. 
-
-%\subsection{Concepts} \label{sec:pheet:concepts}
-
-\subsubsection*{Places} \label{sec:pheet:places}
-A \emph{place} denotes a single worker thread in the Pheet scheduling system that is pinned to specific processor, that is, a place will not migrate to another processing unit during execution.
-Each processor utilized by Pheet is assigned exactly one place, implying that a processor is uniquely identified by it, which may be very useful for the implementation of parallel algorithms.
-Furthermore, a place allows to implement processor-local data structures, e.g., parts of a distributed priority queue or application specific data structures and data accessible by the tasks that are executed on the associated processor.
-
-\subsubsection*{Task parallelism} \label{sec:pheet:task_parallel}
-% work pool
-Pheet is based on the \emph{task-parallel model}, where a task is a small portion of work that is to be executed sequentially.
-As soon as a processor is ready to execute work, it retrieves a task from the \emph{work pool}, which contains all the tasks that have yet to be executed.
-A task may itself create additional tasks that are then stored in the work pool.
-
-A famous algorithm based on the work pool pattern is Dijkstra's algorithm \cite{Dijkstra59} for the shortest path problem:
-The algorithm requires a priority queue (that may be implemented as e.g., a simple binary search tree or a Fibonacci heap). This priority queue is a specialized work pool.
-
-Note that in a task parallel program, the work pool is not necessarily a centralized data structure; each place may maintain its own. 
-
-\subsubsection*{Task priorities and strategy scheduling}  \label{sec:pheet:task_priorites}
-% What does the scheduler do?
-The work pool exposes available work to the \emph{scheduler}, which is responsible for devising a schedule, i.e., a mapping of tasks to the processors.
-% Global scheduling strategy
-In standard task-parallel programming models, the scheduler typically employs a global policy that treats all tasks equally and thus independently of any task-specific properties.
-
-% Task priorities 
-Wimmer introduced the concept of \emph{task priorities} to make the scheduler aware of the preferred (relative) execution order of tasks. 
-% Discrete priorities
-One approach to handling priorities is to assign a discrete priority value (typically taken form a small set) to each task. 
-% Comparison based prioritization
-Another is a comparison based approach, where the programmer has to provide a comparator to the scheduler, that, given two tasks, decides which to execute first.
-
-% Scheduling strategy
-In Pheet, this comparator has to be implemented within the \emph{scheduling strategy} of a task.
-A scheduling strategy is associated with a single task and may specify behavior that is depending on task specific criteria.
-In contrast to a global scheduling policy, a scheduling strategy is associated with a single task and thus allows the programmer to influence the scheduler's behavior for a specific task.
-% Dead tasks
-An important application of this concept is the mechanism of \emph{dead tasks}, which allows to mark a spawned but not yet executed (or currently executing) task as obsolete. 
-This mechanism is useful for speculative execution: A task may be spawned when it is likely that the work will of the task will have to be performed sometime in the future; when further calculations determine that the task need not be executed after all, the task can be marked dead via its associated strategy, thus instructing the scheduler not to execute the task.
-Pheet handles dead tasks lazily, i.e., a dead task will not be dropped immediately but at a time it is convenient for the scheduler to do so, which allows for a more efficient implementation of the scheduler's data structures.
-
 \section{Pareto optima} \label{sec:pareto_optima}
 % Informally describe the problem
 Given a set of vectors, the \emph{maximal vector problem} is to find the subset of vectors s.t.\ each vector of the subset is not dominated by any vector of the set. 
@@ -334,6 +282,58 @@ A \emph{Pareto-set} $P \subseteq V$ is the set of all Pareto-optima of $V$.
 % Cite some work 
 The Pareto-set can be computed in linear expexted-time, as shown in \cite{BentleyCL93}.
 
+\section{Pheet} \label{sec:pheet}
+% what we will do in this section
+In this section, we provide a brief introduction to Pheet-specific concepts that are relevant for this technical report. 
+% reference Martin's dissertation
+A detailed introduction to Pheet, the concepts it is built on and the research based on it can be found in the dissertation of Martin Wimmer \cite{Wimmer14}. 
+
+\subsubsection*{Philosophy} \label{sec:pheet:philosophy}
+% How is pheet implemented, what are its goals?
+Pheet is a task-parallel programming library with the goal of providing a simple-to-use framework for the quick parallelization of algorithms.
+Its flexible plug-in architecture based on C++ template meta-programming allows for any component in the task scheduling system to be replaced by an alternative implementation.
+Additionally, Pheet provides a set of micro-benchmarks (that aim to evaluate specific aspects of the scheduling framework) and fine grained performance counters (that provide detailed insight into the scheduler and supporting data structures), which makes the framework a suitable platform for the implementation and testing of new components such as schedulers or priority queues. 
+
+%\subsection{Concepts} \label{sec:pheet:concepts}
+
+\subsubsection*{Places} \label{sec:pheet:places}
+A \emph{place} denotes a single worker thread in the Pheet scheduling system that is pinned to specific processor, that is, a place will not migrate to another processing unit during execution.
+Each processor utilized by Pheet is assigned exactly one place, implying that a processor is uniquely identified by it, which may be very useful for the implementation of parallel algorithms.
+Furthermore, a place allows to implement processor-local data structures, e.g., parts of a distributed priority queue or application specific data structures and data accessible by the tasks that are executed on the associated processor.
+
+\subsubsection*{Task parallelism} \label{sec:pheet:task_parallel}
+% work pool
+Pheet is based on the \emph{task-parallel model}, where a task is a small portion of work that is to be executed sequentially.
+As soon as a processor is ready to execute work, it retrieves a task from the \emph{work pool}, which contains all the tasks that have yet to be executed.
+A task may itself create additional tasks that are then stored in the work pool.
+
+A famous algorithm based on the work pool pattern is Dijkstra's algorithm \cite{Dijkstra59} for the shortest path problem:
+The algorithm requires a priority queue (that may be implemented as e.g., a simple binary search tree or a Fibonacci heap). This priority queue is a specialized work pool.
+
+Note that in a task parallel program, the work pool is not necessarily a centralized data structure; each place may maintain its own. 
+
+\subsubsection*{Task priorities and strategy scheduling}  \label{sec:pheet:task_priorites}
+% What does the scheduler do?
+The work pool exposes available work to the \emph{scheduler}, which is responsible for devising a schedule, i.e., a mapping of tasks to the processors.
+% Global scheduling strategy
+In standard task-parallel programming models, the scheduler typically employs a global policy that treats all tasks equally and thus independently of any task-specific properties.
+
+% Task priorities 
+Wimmer introduced the concept of \emph{task priorities} to make the scheduler aware of the preferred (relative) execution order of tasks. 
+% Discrete priorities
+One approach to handling priorities is to assign a discrete priority value (typically taken form a small set) to each task. 
+% Comparison based prioritization
+Another is a comparison based approach, where the programmer has to provide a comparator to the scheduler, that, given two tasks, decides which to execute first.
+
+% Scheduling strategy
+In Pheet, this comparator has to be implemented within the \emph{scheduling strategy} of a task.
+A scheduling strategy is associated with a single task and may specify behavior that is depending on task specific criteria.
+In contrast to a global scheduling policy, a scheduling strategy is associated with a single task and thus allows the programmer to influence the scheduler's behavior for a specific task.
+% Dead tasks
+An important application of this concept is the mechanism of \emph{dead tasks}, which allows to mark a spawned but not yet executed (or currently executing) task as obsolete. 
+This mechanism is useful for speculative execution: A task may be spawned when it is likely that the work will of the task will have to be performed sometime in the future; when further calculations determine that the task need not be executed after all, the task can be marked dead via its associated strategy, thus instructing the scheduler not to execute the task.
+Pheet handles dead tasks lazily, i.e., a dead task will not be dropped immediately but at a time it is convenient for the scheduler to do so, which allows for a more efficient implementation of the scheduler's data structures.
+
 
 % Main part of the work
 \section{Multi-criteria priority queue} \label{sec:mcpq}
@@ -343,9 +343,10 @@ In this section, we present our multi-criteria priority queue (MCPQ) for Pheet.
 % General description
 % What is the MCPQ
 The goal of the MCPQ is to provide a concurrent priority queue that can then be used by Pheet's strategy scheduler (see Section \ref{sec:pheet:task_priorites}) to determine the execution order of tasks with multi-dimensional priorities.
-We will refer to the multi-dimensional priority of a task as a \emph{priority vector}, which may in general be a vector of the form described in Section \ref{sec:pareto_optima}. 
-We map the mathematical concept to an object as shown in Listing \ref{lst:priority_vector}, with \verb|PriorityValue| representing a value from a domain $U_i$ for $1 \leq i \leq d$.
-We will use this representation of a priority vector when referencing it in pseudo-code. 
+The multi-dimensional priority of a task as a \emph{priority vector}, which may in general be a vector of the form described in Section \ref{sec:pareto_optima}.
+We simply speak of a non-dominated or Pareto-optimal task when referring to task with a non-dominated priority vector and map the mathematical concept to an object as shown in Listing \ref{lst:priority_vector}, with \verb|PriorityValue| representing a value from a domain $U_i$ for $1 \leq i \leq d$.
+We use this representation of a priority vector when referencing it in pseudo-code. 
+
 
 % PriorityVector
 \begin{code}[label=lst:priority_vector, caption=PriorityVector]
@@ -399,18 +400,94 @@ Thus, a task returned by \verb|pop| has a Pareto-optimal priority only w.r.t.\ t
 Due to the local ordering semantics, a thread might execute unnecessary additional work (since the solutions created by the task will be of much lower quality than the ones created by task with a dominating priority vector). 
 However, this negative effect is countered by increased parallelism and less overhead due to synchronization.
 
-\subsubsection*{Spying} \label{sec:mcpq:stealing}
+\subsubsection*{Spying} \label{sec:mcpq:spying}
 % Spying
 When a thread does not have any more ready-tasks in its local priority queue, it will try to \emph{steal} some from the priority queue of another thread. 
 The operations of the stealing thread are linearized with the ones of all the other threads on the same priority queue.
 
-\subsubsection*{Other stuff}
-\todo{This does not really fit here}
-Furthermore, such a \emph{distributed} implementation of the MCPQ avoids performance bottlenecks inherent to centralized data structures.
+\subsection{Description and analysis} \label{sec:mcpq:description}
+% Purely local ordering semantics
+Our MCPQ observes only local ordering semantics; thus, each thread may maintain its own priority queue, which however has to allow other threads to spy on it. \todo{May be covered somewhere else}
 
-% lock- and wait-free
- To provide good progress guarantees, the MCPQ is implemented as a lock- and wait-free data structure. 
-\todo{More here? or just refer to diss. p. 49? This last sentence doesn't fit anyway}
+%Parts
+% Concurrent and local part
+The data structure is split into a part that may be accessed by several threads concurrently and a second part -- built on top of the first -- that may be accessed by the owning thread only.
+% Virtual array
+For the concurrent part , we assume a (potentially) infinite, thread-safe array-like data structure with linear (w.r.t.\ the capacity $n$ \todo{$n$ because that'*S the number of items} of data structure) access time for a whole sequence of $m\leq n$ items, henceforth called the \emph{Virtual Array}.
+That is, sequentially accessing $m$ items that are stored in a consecutive sequence takes time $O(n)$.
+(\todo{Refer to section where this is shown})
+The virtual array is used to hold all the tasks currently managed by the thread-local priority queue and allows other threads to scan it for tasks awaiting execution.
+% Thread-local part
+The thread-local part, which we call the \emph{Pareto task storage}, is based on the ideas of \emph{log-structured merge-lists\footnote{This idea is based on log-structured merge trees (\cite{Wimmer14}, Section 5.7).}} and \emph{partitioning \todo{better name?}}, explained in the following and depicted in Fig.\ \todo{A nice figure to illustrate those things}.
+
+% Concepts for local part
+\subsubsection{Log-structured merge-lists} \label{sec:mcpq:description:lsm}
+%structure
+The Virtual Array of size $n$ is subdivided into an ordered sequence of a logarithmic number of blocks, where the first block $b_0$ is of some constant size $s_0$ and any other block $b_i$ is $2^j$ ($j \in \mathbb{N}, j > 0$) times larger than its predecessor block.
+Each block maintains a constant-size set of tasks whose priority is not dominated by any other task in that block (see Section \ref{sec:mcpq:description:partitioning} for a detailed description of how this is done).
+A highest-priority item (i.e., a non-dominated item w.r.t.\ to all items currently in the queue) can then be found by scanning the set of non-dominated items of all the blocks and thus in logarithmic time\footnote{This will be shown formally in the remainder of this section.}.
+More formally, we have $n_b = \lceil log \left(\frac{n}{s_0}\right)\rceil$ blocks s.t.\ 
+\begin{align}
+n \leq \sum_{i=0}^{n_b} s_i < 2n \quad .
+\end{align}
+Let $a$ be the binary representation\footnote{W.l.o.g., we assume that $s_0$ divides $n$ evenly.} of $\frac{n}{s_0}$. Then, the size of the $i$-th block is given as
+\begin{align}
+s_i &= 2^j s_0 \quad ,
+\end{align}
+where $j$ is the index of the $i$-th non-zero bit in $a$, i.e., $j$ satisfies the equation
+\begin{align}
+i = \sum_{k=0}^{j} a[k] \quad .
+\end{align}
+We will refer to a block of size $2^j s_0$ as a level $j$ block.
+
+%adding and removing items: general
+The number of items $n$ that have to be managed by the priority queue changes over time as new ones are added while the highest-priority items are removed from the queue.
+%merging
+To maintain the logarithmic number of blocks, we add an additional level $0$ block $b_\text{insert}$, which will receive all newly added items.
+Once this block is full, it is \emph{merged} with block $b_0$ (which is also a level $0$ block) to create a new block of level $1$.
+This merging operation is then continued recursively: If block $b_{i+1}$ has the same level as block $b_i$, merge them to a block of the next higher level.
+This merging operation is illustrated in Fig.\ \todo{well, need to draw a pretty picture here}.
+
+%removed, dead and taken items
+It remains to discuss how items that have been removed from the queue are handled. 
+This requires some understanding of how a single block actually maintains its set of non-dominated tasks, which is why we defer this point until after the next subsection.
+
+\subsubsection{Partitioning} \label{sec:mcpq:description:partitioning}
+%Requirement
+As outlined in the previous section, each block manages a set of tasks and is required to find a task with Pareto-optimal priority (w.r.t.\ the tasks in the block) in constant time.
+
+% all operations on the Virtual array
+We note here that a block always covers a range of tasks stored in the Virtual Array and may thus be viewed as a sub-array of it. 
+Any operation concerning a task is thus directly executed on the Virtual Array data structure.
+
+%Idea
+A block partitions the tasks it holds by a pivot value, which is found by randomly\footnote{All random selections in this work are meant to be made \emph{uniformly and independently.}} selecting a task with priority vector $p$ within the range to be partitioned and selecting a random value $k$ in the range $[1,\dots,d]$, where $d$ is the cardinality of the priority vector\todo{explain why we don't just take a whole vector}. 
+The pivot element $x$ is then taken to be $x = w_k(p)$ and the procedure for in-place partitioning is given in Algorithm \ref{algo:partition}.
+
+\begin{algorithm}
+\caption{Pseudo-code for partitioning a block}
+\label{algo:partition}
+\begin{algorithmic}[1]
+\Require{Block $b$; $left,right \leq$ size of $b$; $left\leq right$}
+\Function{Partition}{Block $b$, $left$, $right$}
+\State Randomly select task $t$ in the range $b[left],\dots, b[right]$
+\State Let $t.p$ be the priority vector of dimension $d$ associated with $t$
+\State $k \gets$ random number in $[1,\dots,d]$
+\State $x \gets w_k(t.p)$ \Comment{Value of $t.p$ at dimension $k$}
+\While{$left < right$}
+  \Comment
+  \While{$left < right$ and (task $t = b[left]$, $w_k(t.p) \lessdot x$)}
+  \EndWhile
+\EndWhile
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+
+
+Since the dominance relation does not constitute a total order
+
+\subsubsection{Removed, dead and taken tasks} \label{sec:mcpq:description:dead_items}
 
 \subsection{Integration in Pheet} \label{sec:mcpq:pheet_integration}
 % Strategy scheduler 2
@@ -427,11 +504,22 @@ In particular, to integrate the MCPQ into the Pheet scheduling framework, we wil
 We will give an intuitive understanding of their functionality required by our implementation together with a detailed description of the classes extending those base classes in the following. 
 For a detailed description of the base classes and correctness proofs, we refer the reader to \cite{Wimmer14}.
 
-\subsection{High level description and interfaces} \label{sec:mcpq:interface}
+
+\subsection{Implementation} \label{sec:mcpq:impl_analysis}
+\todo{say that we proceed in a bottom-up manner}
+\subsubsection*{Other stuff}
+\todo{This does not really fit here}
+Furthermore, such a \emph{distributed} implementation of the MCPQ avoids performance bottlenecks inherent to centralized data structures.
+
+% lock- and wait-free
+ To provide good progress guarantees, the MCPQ is implemented as a lock- and wait-free data structure. 
+\todo{More here? or just refer to diss. p. 49? This last sentence doesn't fit anyway}
+
+\subsubsection{Interfaces, overview}
 % A general, high level overview and interfaces
 The class \verb|ParetoItem| (Listing \ref{lst:PTSItem}) is used to represent tasks managed by scheduler. It references an object of type \verb|SchedulerTask| (Listing \ref{lst:SchedulerTask})(which contains the code to be executed, i.e., the work the task is to perform) and an object implementing the \verb|ParetoStrategy|-interface (Listing \ref{lst:ParetoStrategy}) (which handles the priority of the task).
 
-The \verb|ParetoItem| class has to guarantee that it's \verb|take| operation returns the referenced task exactly once, even if multiple threads execute it concurrently. 
+The \verb|ParetoItem| class has to guarantee that its \verb|take| operation returns the referenced task exactly once, even if multiple threads execute it concurrently. 
 Although an item is at first only visible to the thread creating it (also called the \emph{owning} place), this may change after another thread performs a \verb|steal| operation on the priority queue of the owning place.
 The base class \verb|BaseItem| provides some functionality for memory re-usage and serves as an interface for \verb|StrategyScheduler2|, which is oblivious of the task storage implementation.	
 
@@ -456,7 +544,7 @@ class ParetoItem : BaseItem {
 The \verb|SchedulerTask| and \verb|ParetoStrategy| classes have to be implemented by the application employing the scheduler, i.e., the application programmer.
 While the former contains the code to be executed upon execution of the task, the latter provides access to the priority vector associated with a task.
 Furthermore, the function \verb|priorizite|, given another \verb|ParetoStrategy| object, decides which of the two has higher priority. 
-The \verb|dead_task| function is used by the scheduler to query whether the associated task may be dropped without being executed\footnote{This feature is called ``speculative execution'' is described in Section \ref{sec:pheet:task_priorites}}.
+The \verb|dead_task| function is used by the scheduler to query whether the associated task may be dropped without being executed\footnote{This feature, called ``speculative execution'', is described in Section \ref{sec:pheet:task_priorites}}.
 Both functions will be used by our task storage implementation to order tasks w.r.t.\ their associated priorities.
 
 % Task
@@ -484,7 +572,6 @@ class  {
   bool dead_task();
 }
 \end{code}
-
 The central -- or global -- part of the MCQP is implemented in \verb|ParetoTaskStorage| (Listing \ref{lst:ParetoTaskStorage}), which is mostly used for rerouting \verb|pop| and \verb|steal| operations to the place-local parts of the MCPQ, implemented in \verb|ParetoTaskStoragePlace| (Listing \ref{lst:ParetoTaskStoragePlace}). 
 % boundary
 Notice that the \verb|pop| and \verb|steal| operations of both classes have an additional parameter called the boundary item. 
@@ -528,8 +615,7 @@ class ParetoTaskStorage : Strategy2BaseTaskStorage {
 }
 \end{code}
 
-\subsection{Implementation and analysis} \label{sec:mcpq:impl_analysis}
-\todo{say that we proceed in a bottom-up manner}
+
 % Virtual Array
 \subsubsection{Virtual array} \label{sec:virtual_array}
 % Motivation
@@ -542,7 +628,7 @@ Thus, the \verb|VirtualArray| serves as a clear separation of the data structure
 \begin{code}[label=lst:VirtualArray, caption=Virtual array]
 class VirtualArray {
 public:
-
+  \todo{should we show the VirtualArrayIterator here?}
   /* Access the item at position idx. */
   ParetoItem operator[](int idx);
   /* Increase the capacity by value. */
@@ -563,11 +649,13 @@ To provide for constant time access -- at least when traversing a consecutive ra
 The capacity of the virtual array may be increased and decreased dynamically.
 Let $c$ be the current capacity of the virtual array.
 After a call to \verb|increase_capacity| with parameter \verb|value| returns, the virtual array may be accessed in the range $[0, c + \verb|value|]$. 
-Note that the virtual array may be accessed by several threads at the same time.
-Since we provide access to the elements of the virtual array via iterators, it might occur that one thread wants to access an element via that iterator, while another thread already decreased the capacity of the virtual array s.t.\ the element is not in the valid range anymore\todo{there should be a footnote to the section that makes it clear why this can happen, i.e., ParetoTaskStoragePlace}. 
-To avoid accessing an invalid memory location, the operation \verb|decrease_capacity| merely marks an amount of items equal to \verb|value| as reusable.
-That is, given an initial capacity $c$, the range $[c - \verb|value|, c]$ may still be accessed after the operation returns. 
+Since we provide access to the elements of the virtual array via iterators, it might occur that one thread wants to access an element via an iterator, while another thread already decreased the capacity of the virtual array s.t.\ the element is not in the valid range anymore. \todo{there should be a footnote to the section that makes it clear why this can happen, i.e., ParetoTaskStoragePlace}. 
+To avoid accessing an invalid memory location in this situation, the operation \verb|decrease_capacity| merely marks an amount of items equal to \verb|value| as reusable.
+That is, given an initial capacity $c$, the range $r_d = [c - \verb|value|, c]$ may still be accessed after the operation returns. 
 However, that range will be reused for storing items once the capacity of the virtual array is increased again.
+Note that a subsequent increase of the capacity might lead to items in the range $r_d$ to be overwritten. 
+Thus, care must be taken to ensure that, at the time \verb|decrease_capacity| is called, no item in the range $r_d$ has to be accessed by any thread via the array anymore.
+We will describe in Section \todo{which?} how this is ensured.
 \todo{the capacity is only ever decreased if there are no more active items in the reduced range, i.e., all items in that range are either null, dead or taken. Another thread still scanning that range thus would not steal such items; a subsequent increase and refill would thus overwrite only non-active items!}
 
 
