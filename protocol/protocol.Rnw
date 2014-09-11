@@ -474,13 +474,6 @@ Any operation concerning a task is thus directly executed on the Virtual Array d
 A block partitions the tasks it holds by a pivot value, which is found by randomly\footnote{All random selections in this work are meant to be made \emph{uniformly and independently.}} selecting a task with priority vector $p$ within the range to be partitioned and selecting a random value $k$ in the range $[1,\dots,d]$, where $d$ is the cardinality of the priority vector \todo{explain why we don't just take a whole vector}. 
 The pivot element $x$ is then taken to be $x = w_k(p)$ and our procedure (Algorithm \ref{algo:partition})  for in-place partitioning tasks with multi-dimensional priorities is similar to the well-known partitioning algorithm for scalar values.
 % partitioning
-Tasks with (at dimension $k$) less priority than the pivot element get sorted to the left, while tasks with higher or equal priority are sorted to the right.
-We will call these two parts the left and the right partition.
-Note that tasks that get sorted into the right partition are guaranteed to not be dominated by the ones in the left (since they have a higher priority value in at least one dimension).
-Nevertheless, the left partition might contain Pareto-optimal tasks.
-Since the MCPQ is required to find but one Pareto-optimal task and not the whole set of Pareto-optimal tasks, this behavior is acceptable. 
-The right partition is then partitioned recursively until the right-most partition is smaller than a given constant cut-off value $s_p$, which is the maximum size of the right-most partition that we are aiming for.
-
 \begin{algorithm}
 \caption{Pseudo-code for partitioning a block}
 \label{algo:partition}
@@ -509,9 +502,16 @@ The right partition is then partitioned recursively until the right-most partiti
 \EndFunction
 \end{algorithmic}
 \end{algorithm}
-
+Tasks with (at dimension $k$) less priority than the pivot element get sorted to the left, while tasks with higher or equal priority are sorted to the right.
+We will call these two parts the left and the right partition.
+Note that tasks that get sorted into the right partition are guaranteed to not be dominated by the ones in the left (since they have a higher priority value in at least one dimension).
+Nevertheless, the left partition might contain Pareto-optimal tasks.
+Since the MCPQ is required to find but one Pareto-optimal task and not the whole set of Pareto-optimal tasks, this behavior is acceptable. 
+The right partition is then partitioned recursively until the right-most partition is smaller than a given constant cut-off value $s_p$, which is the maximum size of the right-most partition that we are aiming for.
 
 \subsubsection{Removed, dead and taken tasks} \label{sec:mcpq:description:dead_items}
+
+\subsubsection{Spying} \label{sec:mcpq:description:spying}
 
 \subsection{Integration in Pheet} \label{sec:mcpq:pheet_integration}
 % Strategy scheduler 2
