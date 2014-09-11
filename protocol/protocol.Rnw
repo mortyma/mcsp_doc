@@ -409,8 +409,11 @@ However, this negative effect is countered by increased parallelism and less ove
 
 \subsubsection*{Spying} \label{sec:mcpq:spying}
 % Spying
-When a thread does not have any more ready-tasks in its local priority queue, it will try to \emph{steal} some from the priority queue of another thread. 
-The operations of the stealing thread are linearized with the ones of all the other threads on the same priority queue.
+When a thread does not have any more ready-tasks in its local priority queue, it will try to \emph{spy} some from the priority queue of another thread. 
+A thread spies ready-tasks from another priority queue by copying references to the tasks to its own, thread-local priority queue.
+Note that the tasks is then shared by multiple threads.
+Once a thread pops a task it informs all the other threads that the task is already being processed and thus should not be executed by other threads anymore; this is done by marking a task as \emph{taken}.
+The operations of the spying thread are linearized with the ones of all the other threads on the same priority queue.
 
 \subsection{Description and analysis} \label{sec:mcpq:description}
 % Purely local ordering semantics
