@@ -29,7 +29,7 @@
 \usepackage{float}
 \restylefloat{table}
 \usepackage {tikz}
-\usetikzlibrary{positioning}
+\usetikzlibrary{calc,shapes.multipart,chains,arrows, positioning}
 \usepackage{pgfplots}
 
 % a nice not implies
@@ -456,7 +456,15 @@ The number of items $n$ that have to be managed by the priority queue changes ov
 To maintain the logarithmic number of blocks, we add an additional level $0$ block $b_\text{insert}$, which will receive all newly added items.
 Once this block is full, it is \emph{merged} with block $b_0$ (which is also a level $0$ block) to create a new block of level $1$.
 This merging operation is then continued recursively: If block $b_{i+1}$ has the same level as block $b_i$, merge them to a block of the next higher level.
-This merging operation is illustrated in Fig.\ \todo{well, need to draw a pretty picture here}.
+Fig.\ \ref{fig:merging} illustrates an example merging operation.
+\begin{figure}
+\begin{center}
+\label{fig:merging}
+\caption{Merging}
+\begin{tikzpicture}
+\end{tikzpicture}
+\end{center}
+\end{figure}
 
 %removed, dead and taken items
 It remains to discuss how items that have been removed from the queue are handled. 
