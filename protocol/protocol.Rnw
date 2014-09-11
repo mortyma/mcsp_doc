@@ -1270,5 +1270,18 @@ yAxis="total_time", from=1, to=80)
 \caption{Relaxed memory order for all virtual array accesses}
 \end{figure}
 
+\subsection{11.09.}
+\begin{figure}[H]
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotOverCpus(
+"../benchmarks/local/g_2000_13000_3_10000_42/09_11/after/s2pareto.dat",
+"../benchmarks/local/g_2000_13000_3_10000_42/09_11/before/s2pareto.dat",
+yAxis="total_time", from=1, to=80)
+@
+\end{center}
+\caption{Improvements in PLTSBlock::partition}
+\end{figure}
+
 
 \end{document}
