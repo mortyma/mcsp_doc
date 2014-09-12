@@ -405,7 +405,7 @@ Our MCPQ observes only local ordering semantics; thus, each thread may maintain 
 % Concurrent and local part
 The data structure is split into a part that may be accessed by several threads concurrently and a second part -- built on top of the first -- that may be accessed by the owning thread only.
 % Virtual array
-For the concurrent part , we assume a (potentially) infinite, thread-safe array-like data structure with linear (w.r.t.\ the capacity $n$ of data structure) access time for a whole sequence of $m\leq n$ items, henceforth called the \emph{Virtual Array}.
+For the concurrent part, we assume a (potentially) infinite, thread-safe array-like data structure with linear (w.r.t.\ the capacity $n$ of data structure) access time for a whole sequence of $m\leq n$ items, called the \emph{Virtual Array}.
 That is, sequentially accessing $m$ items that are stored in a consecutive sequence takes time $O(n)$.
 (This will be proved formally in Section \ref{sec:virtual_array}.)
 The virtual array is used to hold all the tasks currently managed by the thread-local priority queue and allows other threads to scan it for tasks awaiting execution.
@@ -786,19 +786,37 @@ class ParetoTaskStorage : Strategy2BaseTaskStorage {
 The \verb|VirtualArray| class (Listing \ref{lst:VirtualArray}) provides a thread-safe array of potentially unlimited size. 
 It is used to relief other classes from certain aspects of memory management which can be tricky for shared data.
 An instance of \verb|ParetoTaskStoragePlace| will store all the items it manages in the place-local \verb|VirtualArray|, which allows other places (i.e., threads) to scan the \verb|VirtualArray| and steal some of the items it holds. 
-Thus, the \verb|VirtualArray| serves as a clear separation of the data structure into a part that is accessed by several threads and a part accessed only by the owning thread.
+Thus, the \verb|VirtualArray| serves as a clear separation of the data structure into a part that is accessed by multiple threads and a part accessed only by the owning thread.
 
 % Interface
 \begin{code}[label=lst:VirtualArray, caption=Virtual array]
 class VirtualArray {
 public:
-  \todo{should we show the VirtualArrayIterator here?}
-  /* Access the item at position idx. */
+  /* Directly access the item at position idx. Complexity: O(n) */
   ParetoItem operator[](int idx);
+  
+  /* Obtain an iterator to the item at position idx. Complexity: O(n) */
+  VirtualArrayIterator iterator_to(int idx);
+  
   /* Increase the capacity by value. */
   void increase_capacity(int value);
+  
   /* Decrease the capacity by value. */
   void decrease_capacity(int value);
+}
+\end{code}
+
+\begin{code}[label=lst:VirtualArrayIterator, caption=Virtual array iterator]
+class VirtualArrayIterator {
+public:
+  /* Increment the iterator. Complexity: O(1) */
+  void operator++();
+  
+  /* Decrement the iterator. Complexity: O(1) */
+  void operator--();
+  
+  /* Atomically access the item referenced by this iterator. Complexity: O(1) */
+  ParetoItem operator*();
 }
 \end{code}
 
@@ -806,9 +824,18 @@ public:
 It is implemented via a doubly-linked list of blocks (class \verb|VirtualArrayBlock|) of constant size $s_\text{v}$. 
 This doubly-link list may be traversed in forward direction by all threads; but only the owning thread may traverse it backwards or alter its structure. 
 To ensure thread-safety, references to the items in the array are stored as atomic pointers.
-To provide for constant time access -- at least when traversing a consecutive range of elements -- we provide an iterator which allows constant time access to the item it currently references as well as to the next and previous items in the array.
+% Analysis
 
-%\subsubsection*{Capacity management}
+\bigskip
+\noindent
+\textbf{Analysis.}
+Since the virtual array is implemented as a linked list, accessing any element takes $O(n)$ time.
+To provide for constant time access -- at least when traversing a consecutive range of elements, which is done by many operations, e.g., spying and partitioning -- we provide an iterator (Listing \ref{lst:VirtualArrayIterator}) which allows constant time access to the item it currently references as well as to the next and previous item in the array.
+Thus, accessing a consecutive sequence $m$ of elements can be done in $O(n)$ time by the use of iterators.
+
+\bigskip
+\noindent
+\textbf{Capacity management.}
 % Memory management & usage
 The capacity of the virtual array may be increased and decreased dynamically.
 Let $c$ be the current capacity of the virtual array.
@@ -1402,17 +1429,17 @@ yAxis="total_time", from=1, to=80)
 \caption{Relaxed memory order for all virtual array accesses}
 \end{figure}
 
-\subsection{11.09.}
+\subsection{12.09.}
 \begin{figure}[H]
 \begin{center}
 <<fig=TRUE, echo=FALSE>>=
 plotOverCpus(
-"../benchmarks/local/g_2000_13000_3_10000_42/09_11/after/s2pareto.dat",
-"../benchmarks/local/g_2000_13000_3_10000_42/09_11/before/s2pareto.dat",
+"../benchmarks/local/g_2000_13000_3_10000_42/09_12/before/s2pareto.dat",
+"../benchmarks/local/g_2000_13000_3_10000_42/09_12/after/s2pareto.dat",
 yAxis="total_time", from=1, to=80)
 @
 \end{center}
-\caption{Improvements in PLTSBlock::partition}
+\caption{Improvements in PLTSBlock::put}
 \end{figure}
 
 
