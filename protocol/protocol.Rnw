@@ -351,25 +351,7 @@ In this section, we present our multi-criteria priority queue (MCPQ) for Pheet.
 % What is the MCPQ
 The goal of the MCPQ is to provide a concurrent priority queue that can then be used by Pheet's strategy scheduler (see Section \ref{sec:pheet:task_priorites}) to determine the execution order of tasks with multi-dimensional priorities.
 The multi-dimensional priority of a task as a \emph{priority vector}, which may in general be a vector of the form described in Section \ref{sec:pareto_optima}.
-We simply speak of a non-dominated or Pareto-optimal task when referring to task with a non-dominated priority vector and map the mathematical concept to an object as shown in Listing \ref{lst:priority_vector}, with \verb|PriorityValue| representing a value from a domain $U_i$ for $1 \leq i \leq d$.
-We use this representation of a priority vector when referencing it in pseudo-code. 
-
-
-% PriorityVector
-\begin{code}[label=lst:priority_vector, caption=PriorityVector]
-/* To be implemented by the application. */
-class PriorityVector {
-
-  /* Get the priority value at dimension d */
-  PriorityValue priority_at(int d);
-  
-  /* Return true if this priority vector at dimension d has a priority value smaller than v */
-  bool less_priority(int d, PriorityValue v);
-  
-  /* Return true if this priority vector at dimension d has a priority value greater than v */
-  bool greater_priority(int d; PriorityValue v);
-}
-\end{code}
+We simply speak of a non-dominated or Pareto-optimal task when referring to task with a non-dominated priority vector.
 
 % Outline
 The first subsections will provide a high-level, somewhat abstract discussion of the MCPQ, in particular of the requirements and major design choices (Section \ref{sec:mcpq:definition}), the integration into Pheet (Section \ref{sec:mcpq:pheet_integration}) and a white-box description via its interfaces (Section \ref{sec:mcpq:interface}). 
@@ -677,7 +659,27 @@ Furthermore, such a \emph{distributed} implementation of the MCPQ avoids perform
  To provide good progress guarantees, the MCPQ is implemented as a lock- and wait-free data structure. 
 \todo{More here? or just refer to diss. p. 49? This last sentence doesn't fit anyway}
 
+
+
 \subsubsection{Interfaces, overview}
+% PriorityVector
+We map the mathematical concept to an object as shown in Listing \ref{lst:priority_vector}, with \verb|PriorityValue| representing a value from a domain $U_i$ for $1 \leq i \leq d$.
+We use this representation of a priority vector when referencing it in pseudo-code. 
+\begin{code}[label=lst:priority_vector, caption=PriorityVector]
+/* To be implemented by the application. */
+class PriorityVector {
+
+  /* Get the priority value at dimension d */
+  PriorityValue priority_at(int d);
+  
+  /* Return true if this priority vector at dimension d has a priority value smaller than v */
+  bool less_priority(int d, PriorityValue v);
+  
+  /* Return true if this priority vector at dimension d has a priority value greater than v */
+  bool greater_priority(int d; PriorityValue v);
+}
+\end{code}
+
 % A general, high level overview and interfaces
 The class \verb|ParetoItem| (Listing \ref{lst:PTSItem}) is used to represent tasks managed by scheduler. It references an object of type \verb|SchedulerTask| (Listing \ref{lst:SchedulerTask})(which contains the code to be executed, i.e., the work the task is to perform) and an object implementing the \verb|ParetoStrategy|-interface (Listing \ref{lst:ParetoStrategy}) (which handles the priority of the task).
 
