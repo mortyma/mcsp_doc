@@ -410,7 +410,15 @@ That is, sequentially accessing $m$ items that are stored in a consecutive seque
 (This will be proved formally in Section \ref{sec:virtual_array}.)
 The virtual array is used to hold all the tasks currently managed by the thread-local priority queue and allows other threads to scan it for tasks awaiting execution.
 % Thread-local part
-The thread-local part, which we call the \emph{Pareto task storage}, is based on the ideas of \emph{log-structured merge-lists\footnote{This idea is based on log-structured merge trees (\cite{Wimmer14}, Section 5.7).}} and \emph{partitioning}, explained in the following and depicted in Fig.\ \todo{A nice figure to illustrate those things}.
+The thread-local part, which we call the \emph{Pareto task storage}, is based on the ideas of \emph{log-structured merge-lists\footnote{This idea is based on log-structured merge trees (\cite{Wimmer14}, Section 5.7).}} and \emph{partitioning}, discussed in the remained of this section. On overview of the structure of the MCPQ is depicted in Fig.\ \ref{fig:structure_overview}.
+\begin{figure}
+\begin{center}
+\label{fig:structure_overview}
+\caption{Overview of the MCPQ structure}
+\begin{tikzpicture}
+\end{tikzpicture}
+\end{center}
+\end{figure}
 
 % Concepts for local part
 \subsubsection{Log-structured merge-lists} \label{sec:mcpq:description:lsm}
@@ -437,16 +445,8 @@ The number of items $n$ that have to be managed by the priority queue changes ov
 %merging
 To maintain the logarithmic number of blocks, we add an additional level $0$ block $b_\text{insert}$, which will receive all newly added items.
 Once this block is full, it is \emph{merged} with block $b_0$ (which is also a level $0$ block) to create a new block of level $1$.
-This merging operation is then continued recursively: If block $b_{i+1}$ has the same level as block $b_i$, merge them to a block of the next higher level.
-Fig.\ \ref{fig:merging} illustrates an example merging operation.
-\begin{figure}
-\begin{center}
-\label{fig:merging}
-\caption{Merging}
-\begin{tikzpicture}
-\end{tikzpicture}
-\end{center}
-\end{figure}
+This merging operation is then continued recursively: If block $b_{i+1}$ has the same level as block $b_i$, they are merged to a block of the next higher level.
+A more detailed presentation of how blocks are managed is given in Section \ref{sec:mcpq:description:managing_blocks}.
 
 % Overview of pop
 The \verb|pop| operation performs a \verb|peek| on each block to obtain a set of tasks that are not dominated w.r.t.\ to the tasks in their respective blocks.
@@ -460,7 +460,7 @@ This requires some understanding of how a single block actually maintains its se
 %Requirement
 As outlined in the previous section, each block manages a set of tasks and is required to find a task with Pareto-optimal priority (w.r.t.\ the tasks in the block) in constant time.
 This operation is called \verb|peek|; its semantics are similar to the ones of \verb|pop|, except that the returned task is only guaranteed not to be dominated by any task covered by the block. 
-Furthermore, \verb|peek| does not remove 
+Furthermore, \verb|peek| does not remove the task from the priority queue.
 
 % all operations on the Virtual array
 We note here that a block always covers a range of tasks stored in the Virtual Array and may thus be viewed as a sub-array of it. 
@@ -623,13 +623,112 @@ An example illustrating the procedure is shown in Fig. \ref{fig:partition_with_n
 \end{center}
 \end{figure}
 
-
-
 \subsubsection*{Analysis} \label{sec:mcpq:description:partition:analysis}
+\todo{this might be hard}
 
-\subsubsection{Merging blocks} \label{sec:mcpq:description:merging}
+\subsubsection{Peek} \label{sec:mcpq:description:pop}
+% peek
+Once a block is partitioned, the \verb|peek| operation is trivial.
+We simply need to scan the right partition until an active item is found. 
+\todo{Make partitions more clear; give them good names}
+In case no active item is found in the right partition, we simply drop back to the previous partition.
+Note that this partition might have to be partitioned further; once the top partition again falls below the maximum size $s_b$, we can scan for an active task.
+% dead block
+In case no active item can be found in the block, the whole block is marked as non-active, implying that no more peek operations have to be executed on this block.
 
-\subsubsection{Dropping non-active tasks} \label{sec:mcpq:description:dropping}
+\begin{figure}
+\begin{center}
+\label{fig:peek}
+\caption{Peek}
+\begin{tikzpicture}
+\end{tikzpicture}
+\end{center}
+\end{figure}
+
+
+\subsubsection{Managing blocks} \label{sec:mcpq:description:managing_blocks}
+% Blocks are just logical; offset
+It is important to note that a block is only a logical construct which provides access to and manages a range of tasks stored in the virtual array. 
+This range is identified by the offset $O$ of the block and its capacity, as shown in Fig. \ref{fig:block_offset}.
+\begin{figure}
+\begin{center}
+\label{fig:block_offset}
+\caption{A block provides access to and manages a range of tasks stored in the virtual array.}
+\begin{tikzpicture}
+\end{tikzpicture}
+\end{center}
+\end{figure}
+Thus, any operation performed at position $i$ within a block is actually performed at position $o+i$ within the virtual array.
+
+% adding elements
+As outlined above, all items that are added to the MCPQ are first stored in a special block of level 0, called $b_\text{insert}$. 
+Once this block is full, it is merged with the block $b_0$ (also of level 0) to create a block of level 1. 
+% merging
+A merge of two adjacent blocks is performed by extending the first block to cover both its own and the other block's items.
+% repartition
+The resulting block then needs to be partitioned again.
+
+% removing elements
+When a task is to be removed from the queue (either by a \verb|pop| operation, or by being marked as dead or taken), it is not immediately deleted from the queue, since this would not allow us to maintain the logarithmic structure of the blocks.
+Instead, non-active tasks are collected by each block and migrate towards the end of the queue with each merging operation. 
+Once they reach the very last block, the non-active tasks can savely be removed from the priority queue.
+
+
+% The problem
+This implies that the MCPQ may contain a large number of non-active tasks and that their removal depends on the occurrence of merging operations. 
+
+\todo{we need to bound the number of elements in the MCPQ}
+
+\begin{algorithm}
+\caption{Pseudo-code for merging several blocks}
+\label{algo:merge_from}
+\begin{algorithmic}[1]
+\Function{merge\_from}{Block $b$}
+\State let $b_p$ be the block predecessing $b$
+\State $merged \gets false$
+\While{$b_p$ exists and is either a non-active block or of same level as $b$ }
+\State merge $b_p$ and $b$
+\State $b \gets b_p$
+\State $b_p \gets$ predecessor of $b$
+\State $merged \gets true$
+\EndWhile
+\If{$merged$}
+\Call{Partition}{$b$}
+\EndIf
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+
+\subsubsection{Push} \label{sec:mcpq:description:push}
+Adding new tasks to the MCPQ via the \verb|push| operation is quite simple, as shown in Algorithm \ref{algo:push}.
+Once the insertion block is full, all the tasks it contains are moved to an new block at the end of the linked list and blocks are merged if necessary.
+
+
+
+\begin{algorithm}
+\caption{Pseudo-code for the push operation}
+\label{algo:push}
+\begin{algorithmic}[1]
+\Require{Insert-block $b_\text{insert}$}
+\Function{Push}{Task $t$}
+\If{$b_\text{insert}$ is full}
+  \State Create a new block $b$ at the end of the linked list
+  \State Move all elements from $b_\text{insert}$ to $b$
+  \State \Call{merge\_from}{$b$}
+\EndIf
+\State Insert $t$ in $b_\text{insert}$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\bigskip
+\noindent
+\textbf{Analysis.}
+
+
+
+\subsubsection{Pop} \label{sec:mcpq:description:pop}
 
 \subsubsection{Spying} \label{sec:mcpq:description:spying}
 
@@ -1436,6 +1535,7 @@ yAxis="total_time", from=1, to=80)
 plotOverCpus(
 "../benchmarks/local/g_2000_13000_3_10000_42/09_12/before/s2pareto.dat",
 "../benchmarks/local/g_2000_13000_3_10000_42/09_12/after/s2pareto.dat",
+"../benchmarks/local/g_2000_13000_3_10000_42/09_12/merging/s2pareto.dat",
 yAxis="total_time", from=1, to=80)
 @
 \end{center}
