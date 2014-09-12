@@ -417,18 +417,18 @@ The operations of the spying thread are linearized with the ones of all the othe
 
 \subsection{Description and analysis} \label{sec:mcpq:description}
 % Purely local ordering semantics
-Our MCPQ observes only local ordering semantics; thus, each thread may maintain its own priority queue, which however has to allow other threads to spy on it. \todo{May be covered somewhere else}
+Our MCPQ observes only local ordering semantics; thus, each thread may maintain its own priority queue, which however has to allow other threads to spy on it.
 
 %Parts
 % Concurrent and local part
 The data structure is split into a part that may be accessed by several threads concurrently and a second part -- built on top of the first -- that may be accessed by the owning thread only.
 % Virtual array
-For the concurrent part , we assume a (potentially) infinite, thread-safe array-like data structure with linear (w.r.t.\ the capacity $n$ \todo{$n$ because that'*S the number of items} of data structure) access time for a whole sequence of $m\leq n$ items, henceforth called the \emph{Virtual Array}.
+For the concurrent part , we assume a (potentially) infinite, thread-safe array-like data structure with linear (w.r.t.\ the capacity $n$ of data structure) access time for a whole sequence of $m\leq n$ items, henceforth called the \emph{Virtual Array}.
 That is, sequentially accessing $m$ items that are stored in a consecutive sequence takes time $O(n)$.
-(\todo{Refer to section where this is shown})
+(This will be proved formally in Section \ref{sec:virtual_array}.)
 The virtual array is used to hold all the tasks currently managed by the thread-local priority queue and allows other threads to scan it for tasks awaiting execution.
 % Thread-local part
-The thread-local part, which we call the \emph{Pareto task storage}, is based on the ideas of \emph{log-structured merge-lists\footnote{This idea is based on log-structured merge trees (\cite{Wimmer14}, Section 5.7).}} and \emph{partitioning \todo{better name?}}, explained in the following and depicted in Fig.\ \todo{A nice figure to illustrate those things}.
+The thread-local part, which we call the \emph{Pareto task storage}, is based on the ideas of \emph{log-structured merge-lists\footnote{This idea is based on log-structured merge trees (\cite{Wimmer14}, Section 5.7).}} and \emph{partitioning}, explained in the following and depicted in Fig.\ \todo{A nice figure to illustrate those things}.
 
 % Concepts for local part
 \subsubsection{Log-structured merge-lists} \label{sec:mcpq:description:lsm}
@@ -466,6 +466,10 @@ Fig.\ \ref{fig:merging} illustrates an example merging operation.
 \end{center}
 \end{figure}
 
+% Overview of pop
+The \verb|pop| operation performs a \verb|peek| on each block to obtain a set of tasks that are not dominated w.r.t.\ to the tasks in their respective blocks.
+This set contains $O(\log n)$ tasks (one task from each block) and is scanned linearly to find a tasks that is not dominated by any other currently in the queue. 
+
 %removed, dead and taken items
 It remains to discuss how items that have been removed from the queue are handled. 
 This requires some understanding of how a single block actually maintains its set of non-dominated tasks, which is why we defer this point until after the next subsection.
@@ -473,14 +477,16 @@ This requires some understanding of how a single block actually maintains its se
 \subsubsection{Partitioning} \label{sec:mcpq:description:partitioning}
 %Requirement
 As outlined in the previous section, each block manages a set of tasks and is required to find a task with Pareto-optimal priority (w.r.t.\ the tasks in the block) in constant time.
+This operation is called \verb|peek|; its semantics are similar to the ones of \verb|pop|, except that the returned task is only guaranteed not to be dominated by any task covered by the block. 
+Furthermore, \verb|peek| does not remove 
 
 % all operations on the Virtual array
 We note here that a block always covers a range of tasks stored in the Virtual Array and may thus be viewed as a sub-array of it. 
 Any operation concerning a task is thus directly executed on the Virtual Array data structure.
 
 %Idea
-A block partitions the tasks it holds by a pivot value, which is found by randomly\footnote{All random selections in this work are meant to be made \emph{uniformly and independently.}} selecting a task with priority vector $p$ within the range to be partitioned and selecting a random value $k$ in the range $[1,\dots,d]$, where $d$ is the cardinality of the priority vector \todo{explain why we don't just take a whole vector}. 
-The pivot element $x$ is then taken to be $x = w_k(p)$ and our procedure (Algorithm \ref{algo:partition})  for in-place partitioning tasks with multi-dimensional priorities is similar to the well-known partitioning algorithm for scalar values.
+A block partitions the tasks it holds by a pivot value, which is found by randomly\footnote{All random selections in this work are meant to be made \emph{uniformly and independently.}} selecting a task with priority vector $p$ within the range to be partitioned and selecting a random value $k$ in the range $[1,\dots,d]$, where $d$ is the cardinality of the priority vector. 
+The pivot element $x$ is then taken to be $x = w_k(p)$ and our procedure (Algorithm \ref{algo:partition})  for in-place partitioning\footnote{In principle, one could take the whole priority vector for the pivot element. However, this might make the partitioning infeasible if the set of Pareto-optima is large. Furthermore, comparing two vectors is $d$ times more expensive than comparing two scalar values.} tasks with multi-dimensional priorities is similar to the well-known partitioning algorithm for scalar values.
 % partitioning
 \begin{algorithm}
 \caption{Pseudo-code for partitioning a block}
@@ -504,20 +510,144 @@ The pivot element $x$ is then taken to be $x = w_k(p)$ and our procedure (Algori
     \State Swap the tasks $b[left]$ and $b[right]$
   \EndIf
 \EndWhile
-\If{$left < right$ and $right-left > s_p$}
+\Statex \Comment{Check if task at $left$ belongs to left partition}
+\If{$t = b[left]$, $w_k(t.p) \less_k x$} 
+  $ left = left +1$
+\EndIf
+\Statex \Comment{Recursively partition the right part until it falls below the cut-off value}
+\If{$left < right$ and $(right-left) > s_p$}
   \State \Call{Partition}{$b$,$left$,$right$}
 \EndIf
 \EndFunction
 \end{algorithmic}
 \end{algorithm}
 Tasks with (at dimension $k$) less priority than the pivot element get sorted to the left, while tasks with higher or equal priority are sorted to the right.
-We will call these two parts the left and the right partition.
+We will call these two parts the left and the right partition and use a subscript to indicate which partitioning step created them (the number of partitioning steps is equal to the recursion depths of the procedure).
 Note that tasks that get sorted into the right partition are guaranteed to not be dominated by the ones in the left (since they have a higher priority value in at least one dimension).
-Nevertheless, the left partition might contain Pareto-optimal tasks.
-Since the MCPQ is required to find but one Pareto-optimal task and not the whole set of Pareto-optimal tasks, this behavior is acceptable. 
-The right partition is then partitioned recursively until the right-most partition is smaller than a given constant cut-off value $s_p$, which is the maximum size of the right-most partition that we are aiming for.
+Nevertheless, the left partition might contain Pareto-optimal tasks, but this behavior is acceptable since the MCPQ is required to find but one Pareto-optimal task and not the whole set of Pareto-optimal tasks.
+The right partition is then partitioned recursively until it is smaller than a given constant cut-off value $s_p$, the maximum size that we are aiming for the right partition.
+Note that the left partition of each partitioning step is not processed further and that the right partition contains tasks that are not dominated by any task in any of the left partitions.
+Figure \todo{show partitioning} illustrates this partitioning process.
 
-\subsubsection{Removed, dead and taken tasks} \label{sec:mcpq:description:dead_items}
+% problems we have here
+In the algorithm outlined above, several important details still need to be addressed:
+
+\noindent
+\textbf{Pivot generation}. As with other algorithms, e.g., Quicksort, it is crucial to select ``good'' pivot elements to avoid worst-case behavior. 
+To get a reasonable pivot value (at least on expectation) we simply sample multiple times and then choose the median as our pivot element.  
+
+\noindent
+\textbf{Ensuring termination}. The algorithm as given above does not necessarily terminate.
+Assume that all the tasks managed by a block have the same priority. 
+Partitioning would sort all tasks into the right partition irregardless of which task is chosen as the pivot, since all of them have the same priority.
+We call such an event a ``failed partitioning step''. 
+Note that it may also occur if we choose the same pivot element as was used by the last partitioning step.
+While in this case we can try to generate a new, different pivot element, the former case does not allow for further partitioning. 
+We ensure termination by aborting the recursive procedure after a constant number of successive failed partitioning steps.
+In this case, the size of the right-most partition will be larger than the size we are aiming for; nevertheless, it is guaranteed that the tasks it contains are not dominated by tasks that have been sorted to the left.
+
+\noindent
+\textbf{Handling dead, taken and removed tasks}. Once a tasks is popped, it has to be removed from the queue. 
+Furthermore, tasks that have been marked dead or taken also need to be removed from the MCPQ. 
+% active, non-active tasks
+We will subsume all those tasks as ``non-active'', whereas at task still awaiting executing is called an active task.
+% How a block handles dead tasks
+Speaking informally, each block moves its non-active tasks to the end of the block and keeps them there.
+Once the block gets merged with another block, the non-active tasks of both blocks are moved to the end of the block generated by the merge.
+Thus, the non-active tasks gradually migrate to the end of the sequence of blocks, i.e., to the end of the virtual array.
+Once they reach the very last block, the non-active tasks may be dropped from the priority queue. 
+
+% Only cover blocks here
+In the following, we will describe in detail how a block handles non-active tasks. 
+All aspects concerning the sequence of blocks -- like merging blocks and the dropping of the non-active tasks -- are discussed in Section \todo{well, which?}.
+
+% structure of a block
+\begin{figure}
+\begin{center}
+\label{fig:block_structure}
+\caption{Structure of a block after partitioning. From the left to the right, we have 1) several left partitions, one created by each partitioning step; 2) the right partition, containing tasks not dominated by any task in the left partitions; and 3) the section containing the non-active tasks of this block.
+}
+\begin{tikzpicture}
+\end{tikzpicture}
+\end{center}
+\end{figure}
+
+% Extended algorithm, structure of a blocks
+Fig.\ \ref{fig:block_structure} shows the structure of a block, after it was partitioned.
+
+% extended algorithm
+The partitioning procedure (Algorithm \ref{algo:partition}) is adapted as follows to handle non-active tasks:
+\begin{itemize}
+\item Only active tasks are sampled for the pivot element.
+\item An additional index, called $non\_active$, is used to point to the start of the section containing the non-active elements.
+Initially, we have $non\_active = right$.
+\item If a non-active task is encountered during the scan for the next task to swap, it is swapped out to the section holding the non-active tasks. 
+\end{itemize}
+
+The adopted procedure is shown in Algorithm \ref{algo:partition_with_nonactive}.
+An example illustrating the procedure is shown in Fig. \ref{fig:partition_with_nonactive}.
+
+\begin{algorithm}
+\caption{Pseudo-code for partitioning with non-active tasks}
+\label{algo:partition_with_nonactive}
+\begin{algorithmic}[1]
+\Function{Partition}{Block $b$, $left$, $right$}
+\Statex \Comment{Generate the pivot element as above, but without sampling non-active tasks.}
+\State $non\_active \gets right$ 
+\While{$left < right$}
+  \While{$left < right$}
+    \If{$left$ is an active task}
+      \If{$left \less_k x$} \Comment{If the task at $left$ has...}
+	\State $left = left + 1$  \Comment{...less priority than the pivot, it stays,...}
+      \Else \State break; \Comment{...otherwise, it is moved to the right partition.}
+      \EndIf
+    \Else \Comment{$left$ is a non-active task}
+      \State $non\_active = non\_active - 1$; \Comment{Now points to an active task}
+      \State swap the tasks $b[left]$ and $b[non\_active]$
+      \If{$non_active == right$} $ right = right - 1 $;
+      \EndIf
+    \EndIf
+  \EndWhile
+  \While{$left < right$}
+    \If{$right$ is an active task}
+      \If{$right \moreeq_k x$} \Comment{If the task at $right$ has more or equal...}
+	\State $right = right - 1$  \Comment{...priority as the pivot, it stays,...}
+      \Else \State break; \Comment{...otherwise, it is moved to the left partition.}
+      \EndIf
+    \Else \Comment{$right$ is a non-active task}
+      \State $non\_active = non\_active - 1$
+      \If {$right == non\_active$} $right = right - 1$
+      \Else
+	\State Swap the tasks $b[right]$ and $b[dead]$;
+      \EndIf
+    \EndIf
+  \EndWhile
+  \If{$left < right$}
+    \State Swap the tasks $b[left]$ and $b[right]$;
+  \EndIf
+\EndWhile
+\Statex \Comment{Check if tasks at $left$ belongs to left partition (as above).}
+\Statex \Comment{Partition recursively, if necessary (as above).}
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\begin{figure}
+\begin{center}
+\label{fig:partition_with_nonactive}
+\caption{Example of a partition run with non-active tasks}
+\begin{tikzpicture}
+\end{tikzpicture}
+\end{center}
+\end{figure}
+
+
+
+\subsubsection*{Analysis} \label{sec:mcpq:description:partition:analysis}
+
+\subsubsection{Merging blocks} \label{sec:mcpq:description:merging}
+
+\subsubsection{Dropping non-active tasks} \label{sec:mcpq:description:dropping}
 
 \subsubsection{Spying} \label{sec:mcpq:description:spying}
 
