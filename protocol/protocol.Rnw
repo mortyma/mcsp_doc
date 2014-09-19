@@ -645,6 +645,17 @@ In case no active item can be found in the block, the whole block is marked as n
 \end{center}
 \end{figure}
 
+\begin{algorithm}
+\caption{Pseudo-code for the peek operation}
+\label{algo:merge_from}
+\begin{algorithmic}[1]
+\Function{peek}{Block $b$}
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Take} \label{sec:mcpq:description:take}
+While the \verb|peek| operation finds a Pareto-optimal item without removing it from the queue, the \verb|take| operation removes a given item from the mcpq by marking it as taken before returning the task contained in the item.
 
 \subsubsection{Managing blocks} \label{sec:mcpq:description:managing_blocks}
 % Blocks are just logical; offset
@@ -704,8 +715,6 @@ This implies that the MCPQ may contain a large number of non-active tasks and th
 Adding new tasks to the MCPQ via the \verb|push| operation is quite simple, as shown in Algorithm \ref{algo:push}.
 Once the insertion block is full, all the tasks it contains are moved to an new block at the end of the linked list and blocks are merged if necessary.
 
-
-
 \begin{algorithm}
 \caption{Pseudo-code for the push operation}
 \label{algo:push}
@@ -725,12 +734,60 @@ Once the insertion block is full, all the tasks it contains are moved to an new 
 \bigskip
 \noindent
 \textbf{Analysis.}
-
-
+\todo{again, this might be hard}
 
 \subsubsection{Pop} \label{sec:mcpq:description:pop}
+\begin{algorithm}
+\caption{Pseudo-code for the pop operation}
+\label{algo:merge_from}
+\begin{algorithmic}[1]
+\Function{pop}{item $boundary$}
+\State Item $item_{best} \gets$ \Call{peek}{insertion block}
+\State Block $b_{best} \gets$ insertion block
+\State Block $b \gets $ insertion block
+\While{$b.next$ exists}
+  \State $b \gets b.next$
+  \If{$b$ is non-active}
+    \State continue
+  \EndIf
+  \State Item $item \gets$ \Call{peek}{$b$}
+  \If{$item == null$}
+    \State mark $b$ as non-active block
+  \Else
+    \If{$!item_{best} || item \less item_{best}$}
+      \State $item_{best} \gets item$
+      \State  $b_{best} \gets b$ 
+    \EndIf
+    \State \Call{try\_reduce\_level}{$b$}
+    \State \Call{merge\_from}{$b$}
+  \EndIf
+\EndWhile
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
 
 \subsubsection{Spying} \label{sec:mcpq:description:spying}
+\begin{algorithm}
+\caption{Pseudo-code for the spy operation}
+\label{algo:merge_from}
+\begin{algorithmic}[1]
+\Function{spy}{item $boundary$}
+\State Place $other \gets item.owner$
+\If{$item$ is taken}
+  \State return $null$
+\EndIf
+\For{$i \gets other.begin$; $i < other.end$; $i++ $}
+  \State Item $item \gets other[i]$
+  \If{$item$ is active}
+    \Call{Put}{$item$}
+  \EndIf
+\EndFor
+
+
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
 
 \subsection{Integration in Pheet} \label{sec:mcpq:pheet_integration}
 % Strategy scheduler 2
@@ -1540,6 +1597,19 @@ yAxis="total_time", from=1, to=80)
 @
 \end{center}
 \caption{Improvements in PLTSBlock::put}
+\end{figure}
+
+\subsection{18.09.}
+\begin{figure}[H]
+\begin{center}
+<<fig=TRUE, echo=FALSE>>=
+plotOverCpus(
+"../benchmarks/local/g_2000_13000_3_10000_42/09_18/before/s2pareto.dat",
+"../benchmarks/local/g_2000_13000_3_10000_42/09_18/after/s2pareto.dat",
+yAxis="total_time", from=1, to=80)
+@
+\end{center}
+\caption{Improvements and fix in PLTSBlock::pop}
 \end{figure}
 
 
