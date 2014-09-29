@@ -423,11 +423,9 @@ The MCPQ observes only local ordering semantics and thus each thread maintains i
 % Concurrent and local part
 The data structure is split into a part that may be accessed by several threads concurrently and a second part -- built on top of the first -- that may be accessed by the owning thread only.
 % Virtual array
-For the concurrent part, we assume a (potentially) infinite, thread-safe array-like data structure with linear (w.r.t.\ the capacity $n$ of data structure) access time for a whole sequence of $m\leq n$ items, called the \emph{Virtual Array}.
-
-% That is, sequentially accessing $m$ items that are stored in a consecutive sequence is assumed to take time $O(n)$.
-The virtual array is used to hold all the tasks currently managed by the thread-local priority queue and allows other threads to scan it for tasks awaiting execution.
-An implementation is discussed in Section \ref{sec:virtual_array}, where we also prove the linear access time property for a sequence of elements.
+For the concurrent part, we assume a (potentially) infinite, thread-safe array-like data structure with linear (w.r.t.\ the capacity $n$ of data structure) access time for a whole sequence of $m\leq n$ items, called the \emph{Virtual Array}. 
+The Virtual Array is used to hold all the tasks currently managed by the thread-local priority queue and allows other threads to scan it for tasks awaiting execution.
+It is discussed in more detail in Section \ref{sec:virtual_array}.
 
 % Thread-local part
 The thread-local part is based on the idea of \emph{log-structured merge trees} (\cite{Wimmer14}, Section 5.7) and \emph{partitioning} to provide the operations \verb|push| and \verb|pop| as defined above.
@@ -543,6 +541,48 @@ Operations \verb|peek| (Section \ref{sec:mcpq:description:peek}), \verb|take| (S
 \end{figure}
 
 \todo{Remove the ugly overview figure?}
+
+
+% Virtual Array
+\subsubsection{Virtual array} \label{sec:virtual_array}
+% Motivation
+The Virtual Array is a thread-safe array-like data structure with iterator-based access.
+% concurrency
+It may be traversed in forward direction by all threads, but only the owning thread may traverse it backwards or alter its structure. 
+To ensure thread-safety, references to the items in the array need to be stored as atomic pointers.
+% Operations
+It provides the following operations:
+\begin{itemize}
+\item \verb|begin| obtains an iterator to the first item in Virtual Array.
+\item \verb|end| obtains an iterator to the past-the-end\footnote{This is the theoretical item \emph{after} the last item in the array and thus the end-iterator does not point to any element.} item in the Virtual Array.
+\item \verb|remove(iterator l, iterator r)| removes the range $]l, r[$ from the Virtual Array and frees the items stored there. 
+\end{itemize}
+An iterator provides the usual operations:
+\begin{itemize}
+\item \verb|++| (\verb|--|) moves the iterator to the next (previous) item.
+\item \verb|advance(m)| applies the \verb|++| (if $m$ is negative: the \verb|--|) operator $m$ times.
+\end{itemize}
+
+
+% Implementation
+The Virtual Array is implemented via a doubly-linked list of arrays of constant size $s_\text{v}$, called \emph{blocks}. 
+% Analysis
+The operations \verb|begin| and \verb|end| of the Virtual Array as well as the \verb|++| and \verb|--| operators of an iterator trivially require $O(1)$ time, while the \verb|advance| operation has time complexity\footnote{In practice, this operation can be speed-up to require $m/s_v$ time.} $O(m)$.
+% Access time
+% Deletion
+To ensure thread safety, the \verb|delete| operation only removes whole blocks from the Virtual Array. 
+Given iterators $l,r$, it removes the range $[l', r']$, where $l' = c_1 s_v$ is the minimal $l'$ s.t.\ $l < l' $ and $r' = c_2 s_v$ is the maximal $r'$ s.t.\ $r' < r $, for constants $c_1, c_2 > 0$.
+Note that items in the range $]l, l'[$ and $]r', r[$ are not removed, i.e., after the \verb|remove| operation the range $]l, r[$ is not necessarily empty and may contain up to $2 s_v$ elements. 
+It is the user's responsibility to always apply the operation with the largest possible range\footnote{I.e., removing the range $]l,r[$ cannot be done by using the \verb|remove| operation twice with the ranges $]l, k[$, $]k-1, r[$ for some $k$, $l<k<r$.} and including items that have not been removed although they were in the range of a previous \verb|remove| operation\footnote{Section \ref{sec:mcpq:description:partitioning} shows how this is done}.
+The \verb|delete| operation requires $O(1)$ time.
+
+\begin{lemma}
+To store $n$ items, the Virtual Array allocates $O(n)$ memory.
+\end{lemma}
+\begin{proof}
+Assuming that the \verb|remove| operation is applied as described above, the worst case is 1 non-deleted item per block. If a block does not contain any non-deleted items, the closest preceding non-deleted item is in a preceding block, while the closest succeeding item is in a succeeding block, implying that the block would have been deleted by a \verb|remove| operation. 
+Since blocks are of constant size, the Virtual Array is of size at most $s_v n$.
+\end{proof}
 
 \subsubsection{Log-structured merge-lists (LSML)} \label{sec:mcpq:description:lsm}
 \begin{figure}
@@ -692,8 +732,8 @@ An LSML uses at most $2(n + c)$ space to store $n$ keys.
 This follows directly from the previous lemma.
 \end{proof}
 
-Note that so far we have not discussed how a block actually manages the keys it contains (this will be done in Section \ref{sec:mcpq:description:partitioning}. 
-We will make the following assumption to analyze the operations \textit{push} and \textit{pop}:
+Note that so far we have not discussed how a block actually manages the keys it contains (this will be done in Section \ref{sec:mcpq:description:partitioning}). 
+We will make the following assumption to be able to provide a preliminary analysis of operations \textit{push} and \textit{pop}:
 \begin{assumption}
 The \textit{push}, \textit{peek} and \textit{pop} operations on a \emph{single block} can be done in constant amortized time.
 \end{assumption}
@@ -1227,74 +1267,6 @@ class ParetoTaskStorage : Strategy2BaseTaskStorage {
 \end{code}
 
 
-% Virtual Array
-\subsubsection{Virtual array} \label{sec:virtual_array}
-% Motivation
-The \verb|VirtualArray| class (Listing \ref{lst:VirtualArray}) provides a thread-safe array of potentially unlimited size. 
-It is used to relief other classes from certain aspects of memory management which can be tricky for shared data.
-An instance of \verb|ParetoTaskStoragePlace| will store all the items it manages in the place-local \verb|VirtualArray|, which allows other places (i.e., threads) to scan the \verb|VirtualArray| and steal some of the items it holds. 
-Thus, the \verb|VirtualArray| serves as a clear separation of the data structure into a part that is accessed by multiple threads and a part accessed only by the owning thread.
-
-% Interface
-\begin{code}[label=lst:VirtualArray, caption=Virtual array]
-class VirtualArray {
-public:
-  /* Directly access the item at position idx. Complexity: O(n) */
-  ParetoItem operator[](int idx);
-  
-  /* Obtain an iterator to the item at position idx. Complexity: O(n) */
-  VirtualArrayIterator iterator_to(int idx);
-  
-  /* Increase the capacity by value. */
-  void increase_capacity(int value);
-  
-  /* Decrease the capacity by value. */
-  void decrease_capacity(int value);
-}
-\end{code}
-
-\begin{code}[label=lst:VirtualArrayIterator, caption=Virtual array iterator]
-class VirtualArrayIterator {
-public:
-  /* Increment the iterator. Complexity: O(1) */
-  void operator++();
-  
-  /* Decrement the iterator. Complexity: O(1) */
-  void operator--();
-  
-  /* Atomically access the item referenced by this iterator. Complexity: O(1) */
-  ParetoItem operator*();
-}
-\end{code}
-
-% Implementation
-It is implemented via a doubly-linked list of blocks (class \verb|VirtualArrayBlock|) of constant size $s_\text{v}$. 
-This doubly-link list may be traversed in forward direction by all threads; but only the owning thread may traverse it backwards or alter its structure. 
-To ensure thread-safety, references to the items in the array are stored as atomic pointers.
-% Analysis
-
-\bigskip
-\noindent
-\textbf{Analysis.}
-Since the virtual array is implemented as a linked list, accessing any element takes $O(n)$ time.
-To provide for constant time access -- at least when traversing a consecutive range of elements, which is done by many operations, e.g., spying and partitioning -- we provide an iterator (Listing \ref{lst:VirtualArrayIterator}) which allows constant time access to the item it currently references as well as to the next and previous item in the array.
-Thus, accessing a consecutive sequence $m$ of elements can be done in $O(n)$ time by the use of iterators.
-
-\bigskip
-\noindent
-\textbf{Capacity management.}
-% Memory management & usage
-The capacity of the virtual array may be increased and decreased dynamically.
-Let $c$ be the current capacity of the virtual array.
-After a call to \verb|increase_capacity| with parameter \verb|value| returns, the virtual array may be accessed in the range $[0, c + \verb|value|]$. 
-Since we provide access to the elements of the virtual array via iterators, it might occur that one thread wants to access an element via an iterator, while another thread already decreased the capacity of the virtual array s.t.\ the element is not in the valid range anymore. \todo{there should be a footnote to the section that makes it clear why this can happen, i.e., ParetoTaskStoragePlace}. 
-To avoid accessing an invalid memory location in this situation, the operation \verb|decrease_capacity| merely marks an amount of items equal to \verb|value| as reusable.
-That is, given an initial capacity $c$, the range $r_d = [c - \verb|value|, c]$ may still be accessed after the operation returns. 
-However, that range will be reused for storing items once the capacity of the virtual array is increased again.
-Note that a subsequent increase of the capacity might lead to items in the range $r_d$ to be overwritten. 
-Thus, care must be taken to ensure that, at the time \verb|decrease_capacity| is called, no item in the range $r_d$ has to be accessed by any thread via the array anymore.
-We will describe in Section \todo{which?} how this is ensured.
-\todo{the capacity is only ever decreased if there are no more active items in the reduced range, i.e., all items in that range are either null, dead or taken. Another thread still scanning that range thus would not steal such items; a subsequent increase and refill would thus overwrite only non-active items!}
 
 
 \begin{comment}
