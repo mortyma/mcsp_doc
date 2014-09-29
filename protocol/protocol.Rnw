@@ -33,6 +33,7 @@
 \usepackage{pgfplots}
 \usepackage{fancyvrb}
 \usepackage{subfigure}
+\usepackage{etoolbox}\AtBeginEnvironment{algorithmic}{\small}
 
 % a nice not implies
 \newcommand{\notimplies}{%
@@ -52,6 +53,7 @@
 \newtheorem{theorem}{Theorem}
 \newtheorem{assumption}{Assumption}
 \newtheorem{definition}{Definition}
+\newtheorem{conjecture}{Conjecture}
 
 % math stuff
 % vectors
@@ -461,9 +463,12 @@ When employing a memory manager to manage memory of size $n$, the size of the al
 
 % keys
 As usual in the literature, we will denote the items managed by a priority queue as \emph{keys}.
+In the context of this work, an item is is a priority vector which is associated with a task.
+We say that a key is deleted if it was returned by a \verb|pop| operation or its associated task was marked as taken or dead. 
+
 % outline
 On overview of the structure of the MCPQ is depicted in Fig.\ \ref{fig:structure}. The concepts of log-structured merge-lists and partitioning are discussed in sections \ref{sec:mcpq:description:lsm} and \ref{sec:mcpq:description:partitioning}, respectively. 
-Section \ref{sec:mcpq:description:managing_blocks} shows how the logarithmic number of blocks is maintained.
+Section \ref{sec:mcpq:description:merging_blocks} shows how the logarithmic number of blocks is maintained.
 Operations \verb|peek| (Section \ref{sec:mcpq:description:peek}), \verb|take| (Section \ref{sec:mcpq:description:take}), \verb|push| (Section \ref{sec:mcpq:description:push}) and \verb|pop| (Section \ref{sec:mcpq:description:pop}) as well as \verb|spy| (Section \ref{sec:mcpq:description:spying}) are discussed as soon as all relevant concepts and structures have been introduced.
 
 
@@ -512,6 +517,7 @@ Operations \verb|peek| (Section \ref{sec:mcpq:description:peek}), \verb|take| (S
 \node[anchor=north west] at (bai0.south west) {\tiny Block $b_a$};
 }
 
+\begin{comment}
 \begin{figure}
 \begin{center}
 \begin{tikzpicture}[>=stealth']
@@ -539,8 +545,7 @@ Operations \verb|peek| (Section \ref{sec:mcpq:description:peek}), \verb|take| (S
 \caption{Overview of the MCPQ structure: The Virtual Array provides an array-like data structure of (potentially) infinite capacity and can be accessed concurrently in a lock- and wait-free manner by multiple threads. A log-structured merge-list operating on the keys stored by the Virtual Array is used by the owning thread to find Pareto-optimal keys. }
 \label{fig:structure}
 \end{figure}
-
-\todo{Remove the ugly overview figure?}
+\end{comment}
 
 
 % Virtual Array
@@ -700,15 +705,6 @@ Merging two blocks requires constant time.
 Since all operations are executed in-place on the Virtual Array, two blocks are merged by doubling the capacity (i.e., the range of keys maintained by the block) of the first and deleting the second block.
 \end{proof}
 
-% removing keys from virtual array
-Note that when a block of level $l$ is shrunk, $2^{l-1}$ keys that have been marked for deletion have to be removed from the Virtual Array. 
-To allow for a clean analysis, we make the following assumption:
-\begin{assumption}
-Removing a range of keys from the Virtual Array can be done in constant time.
-\end{assumption}
-\todo{tell where we will provide details for this}.
-
-
 \begin{lemma}
 An LSML requires at most $2 + \lfloor \log n \rfloor$ blocks to store $n$ keys.
 \end{lemma}
@@ -721,22 +717,22 @@ Once half of the keys of a block are marked as deleted, the block is shrunk to h
 Thus, $\lfloor \log n \rfloor$ such blocks contain at least $n/2 + 1$ non-deleted keys.
 An additional block of level $l>0$ must be of level at least $\lfloor \log n \rfloor + 1$ (at most one block of any level may exist) and thus contain at least $2^{\lfloor \log n \rfloor + 1}/2 \geq n/2 $ non-deleted keys; a contradiction, since less than $n/2$ keys are left.
 In addition to the $\lfloor \log n \rfloor$ blocks of level $l>0$, the additional block $b_a$ is always allocated and one block of level 0 containing just 1 key may be present.
-
 For $c>1$, the number of blocks does not increase since the capacity of each is multiplied by $c$.
 \end{proof}
 
+Note that the size of each block is $O(n)$.
+So far we have not discussed how a block actually manages the keys it contains (this will be done in Section \ref{sec:mcpq:description:partitioning}). 
+We will make the following assumption to be able to provide a preliminary analysis of the LSML:
+\begin{assumption}
+To manage $n$ keys, a block used $O(n)$ space and the \textit{push}, \textit{peek} and \textit{take} operations on a \emph{single block} can be done in constant time. \todo{maybe just do the partitioning part first?}
+\end{assumption}
+
 \begin{corollary}
-An LSML uses at most $2(n + c)$ space to store $n$ keys.
+An LSML uses $O(n)$ space to store $n$ keys.
 \end{corollary}
 \begin{proof}
 This follows directly from the previous lemma.
 \end{proof}
-
-Note that so far we have not discussed how a block actually manages the keys it contains (this will be done in Section \ref{sec:mcpq:description:partitioning}). 
-We will make the following assumption to be able to provide a preliminary analysis of operations \textit{push} and \textit{pop}:
-\begin{assumption}
-The \textit{push}, \textit{peek} and \textit{pop} operations on a \emph{single block} can be done in constant amortized time.
-\end{assumption}
 
 \begin{lemma}
 The \textit{push} operation requires $O(\log n)$ amortized time.
@@ -750,10 +746,11 @@ The \textit{pop} operation requires $O(\log n)$ amortized time.
 \begin{proof}
 \end{proof}
 
-\subsubsection{Partitioning} \label{sec:mcpq:description:partitioning}
+
+\subsubsection{LSML-Blocks} \label{sec:mcpq:description:partitioning}
 %Idea
-A block partitions the keys it holds by a pivot value, which is found by randomly\footnote{All random selections in this work are meant to be made \emph{uniformly and independently.}} selecting a key within the range to be partitioned and a random value $i$ in the range $[1,\dots,d]$ (where $d$ is the cardinality of the keys). 
-The pivot element $x$ is then taken to be $x = k[i]$ and our procedure (Algorithm \ref{algo:partition})  for in-place partitioning multi-dimensional keys is similar to the well-known partitioning algorithm for scalar values\footnote{In principle, one could take the whole key as the pivot element. However, this might make the partitioning infeasible if the set of Pareto-optima is large.}.
+A block partitions the keys it holds by a pivot value, which is found by randomly\footnote{All random selections in this work are meant to be made \emph{uniformly and independently.}} selecting a key within the range to be partitioned and a random value $i \in [1,\dots,d]$ (where $d$ is the cardinality of the keys). 
+The pivot element $x$ is then taken to be $x = k[i]$ (Algorithm \ref{algo:partition}). Our procedure (Algorithm \ref{algo:partition}) for in-place partitioning multi-dimensional keys is similar to the well-known partitioning algorithm for scalar values\footnote{In principle, one could take the whole key as the pivot element. However, this might make the partitioning infeasible if the set of Pareto-optima is large.}.
 
 %pivot generation
 \begin{algorithm}
@@ -764,7 +761,7 @@ The pivot element $x$ is then taken to be $x = k[i]$ and our procedure (Algorith
 \State Randomly select a key $k$ in the range $b[left],\dots, b[right]$
 \State $i \gets$ random number in $[1,\dots,d]$
 \State $x \gets k[i]$ 
-\State \Return{$x$}
+\State \Return{$(x,i)$}
 \EndFunction
 \end{algorithmic}
 \end{algorithm}
@@ -776,25 +773,25 @@ The pivot element $x$ is then taken to be $x = k[i]$ and our procedure (Algorith
 \label{algo:partition}
 \begin{algorithmic}[1]
 \Require{Block $b$; $left,right \leq$ size of $b$; $left\leq right$}
-\Require{$s_p$: desired maximum size of right-most partition}
+\Require{$s_p$: desired maximum size of right partition $p_r$}
 \Function{Partition}{Block $b$, $left$, $right$}
-\State $x \gets$ \Call{pivot}{$b$, $l$, $r$}
+\State $(x,i) \gets$ \Call{pivot}{$b$, $l$, $r$}
 \While{$left < right$}
-  \While{$left < right$ and (task $t = b[left]$, $w_k(t.p) \less_k x$)}
+  \While{$left < right$ and (key $k = b[left]$,  $k \less_i x$)}
     \State $left = left + 1$
   \EndWhile
-  \While{$left < right$ and (task $t = b[right]$, $w_k(t.p) \moreeq_k x$)}
+  \While{$left < right$ and (key $k = b[right]$, $k \moreeq_i x$)}
     \State $right = right -1 $
   \EndWhile
   \If{$left < right$}
-    \State Swap the tasks $b[left]$ and $b[right]$
+    \State Swap the keys $b[left]$ and $b[right]$
     \State $left = left + 1$
     \State $right = right - 1$
   \EndIf
 \EndWhile
-\Statex \Comment{Check if task at $left$ belongs to left partition}
-\If{$t = b[left]$, $w_k(t.p) \less_k x$} Pivot element generation should be its own subsection (
-  $ left = left +1$
+\Statex \Comment{Check if key at $left$ belongs to left partition}
+\If{$k = b[left]$, $k \less_i x$}
+  $ left = left + 1$
 \EndIf
 \Statex \Comment{Recursively partition the right part until it falls below the cut-off value}
 \If{$left < right$ and $(right-left) > s_p$}
@@ -803,17 +800,17 @@ The pivot element $x$ is then taken to be $x = k[i]$ and our procedure (Algorith
 \EndFunction
 \end{algorithmic}
 \end{algorithm}
-Tasks with less priority (at dimension $k$) than the pivot element get sorted to the left, while tasks with higher or equal priority are sorted to the right.
+Keys with less priority (at dimension $i$) than the pivot element get sorted to the left, while keys with higher or equal priority are sorted to the right.
 We will call these two parts the left and the right partition and use a subscript to indicate which partitioning step created them: The two partitions created by the first partitioning step are thus partitions dubbed $p_{l1}$ and $p_{r1}$.
 
 %Pareto optimality
-Note that tasks that get sorted into the right partition are guaranteed to not be dominated by the ones in the left (since they have a higher priority value in at least one dimension).
-Nevertheless, the left partition might contain Pareto-optimal tasks; this behavior is acceptable since the MCPQ is required to find but one Pareto-optimal task and not the whole set of Pareto-optimal tasks.
-The right partition $p_{r1}$ is then partitioned recursively until it is smaller than a given constant cut-off value $s_p$, the maximum size that we are aiming for the right partition.
-Note that the left partition $l_i$ of each partitioning step is not processed further and that the last right partition (for simplicity referred to as $p_r$) contains tasks that are not dominated by any task in any of the left partitions, 
+Note that keys that get sorted into the right partition are guaranteed to not be dominated by the ones in the left (since they have a higher priority value in at least one dimension).
+Nevertheless, the left partition might contain Pareto-optimal keys; this behavior is acceptable since the MCPQ is required to find but one Pareto-optimal key and not the whole set of Pareto-optima.
+The right partition $p_{r1}$ is partitioned recursively until it is smaller than a given constant cut-off value $s_p$, the maximum size that we are aiming for the right partition.
+Note that the left partition $l_i$ of each partitioning step is not processed further and that the last right partition (for simplicity referred to as $p_r$) contains keys that are not dominated by any task in any of the left partitions, 
 % the problem with the right partition
-but it may itself contain two tasks where one dominates the other. 
-However, the \verb|peek| operation (Section \ref{sec:mcpq:description:peek} addresses this problem by linearly scanning the whole right partition $p_r$ to ensure that a non-dominated task is returned.
+but it may itself contain two keys where one dominates the other. 
+The \verb|peek| operation (Section \ref{sec:mcpq:description:peek} addresses this problem by linearly scanning the right partition $p_r$ to ensure that a non-dominated key is returned.
 A different approach would be to flat out compute the Pareto-optima within $r_p$ by a linear expected-time algorithm as discussed in \cite{BentleyCL93, GodfreySG07}.
 
 % figs and refs
@@ -824,35 +821,27 @@ In the algorithm outlined above, several important details still need to be addr
 
 \medskip
 \noindent
-\textbf{Pivot generation}. As with other algorithms, e.g., Quicksort, it is crucial to select ``good'' pivot elements to avoid worst-case behavior. 
+\textbf{Pivot generation}. As with other randomized algorithms, e.g., Quicksort, it is crucial to select ``good'' pivot elements to avoid worst-case behavior. 
 To get reasonable pivot values (at least on expectation) we sample multiple times and then choose the median as our pivot element.  
+\begin{corollary}
+Generating a pivot element takes $O(n)$ time. 
+\end{corollary}
+\begin{proof}
+Accessing a random item requires $O(n)$ times (due to the underlying Virtual Array). Accessing a constant number of items and selecting the median of those does not increase the asymptotic complexity. 
+\end{proof}
 
 \medskip
 \noindent
 \textbf{Ensuring termination}. The algorithm as given above does not necessarily terminate.
-Assume that all the tasks managed by a block have the same priority. 
-Partitioning would sort all tasks into the right partition -- irregardless of which task is chosen as the pivot -- and then try to partition the very same elements again.
-We call such an event a ``failed partitioning step''. 
-Note that it may also occur if we choose the same pivot element as was used by the last partitioning step.
-While in this case we can try to generate a new, different pivot element, the former case does not allow for further partitioning. 
-We ensure termination by aborting the recursive procedure after a constant number of successive failed partitioning steps.
-In this case, the size of the right-most partition will be larger than the size we are aiming for; nevertheless, it is guaranteed that the tasks it contains are not dominated by tasks that have been sorted to the left.
-
-\medskip
-\noindent
-\textbf{Handling dead, taken and removed tasks}. Once a tasks is popped, it has to be removed from the queue. 
-Furthermore, tasks that have been marked dead or taken also need to be removed from the MCPQ. 
-% active, non-active tasks
-We will subsume all those tasks as ``non-active'', whereas a task still awaiting execution is called an active task.
-% How a block handles dead tasks
-Speaking informally, each block moves its non-active tasks to the end of the block and keeps them there.
-Once the block gets merged with another block, the non-active tasks of both blocks are moved to the end of the block generated by the merge.
-Thus, the non-active tasks gradually migrate to the end of the sequence of blocks, i.e., to the end of the virtual array.
-Once they reach the very last block, the non-active tasks may be dropped from the priority queue. 
-
-% Only cover blocks here
-In the following, we will describe in detail how a block handles non-active tasks. 
-All aspects concerning the sequence of blocks -- like merging blocks and dropping the non-active tasks -- are discussed in Section \ref{sec:mcpq:description:managing_blocks}.
+Assuming that all the keys managed by a block are equal, partitioning would sort all the keys into the right partition -- irregardless of which key is chosen as the pivot -- and then try to partition the very same elements again.
+We call such an event a ``failed partitioning step''
+This event may also occur if we choose the same pivot element as was used by the last partitioning step.
+While in this case we can try to generate a new, different pivot element, the former case does not allow for further partitioning and we ensure termination by aborting the recursive procedure after a constant number of successive failed partitioning steps.
+In this case, the size of the right-most partition will be larger than the size we are aiming for; nevertheless, it is guaranteed that the keys it contains are not dominated by keys that have been sorted to the left.
+In the following, we will make the following assumption:
+\begin{assumption} \label{ass:partition_succeeds}
+After partitioning a block, its right partition $p_r$ is smaller than or equal to the constant cut-off value $s_p$. 
+\end{assumption} 
 
 \newcommand{\partition}[4]{
   \node[minimum width=#4, minimum height=8mm, rectangle, draw, anchor=west] at (#2.east) (#1) {};
@@ -871,164 +860,206 @@ All aspects concerning the sequence of blocks -- like merging blocks and droppin
 \node[anchor=west,yshift=-2.5mm] at (n2.east) (d1) {\tiny\dots};
 \partition{n3}{d0}{$p_{l_i}$}{15mm};
 \partition{n4}{n3}{$p_{r}$}{15mm};
-\partition{n5}{n4}{$p_{na}$}{25mm};
+\partition{n5}{n4}{$p_{d}$}{25mm};
 \end{tikzpicture}
-\caption{Structure of a block after partitioning. From the left to the right, we have 1) several left partitions $p_{li}$, one created by each partitioning step; 2) the right partition $p_r$, containing tasks not dominated by any task in the left partitions; and 3) the section $p_{na}$ containing the non-active tasks of this block. 
+\caption{Structure of a block after partitioning. From the left to the right, we have 1) several left partitions $p_{li}$, one created by each partitioning step; 2) the right partition $p_r$, containing keys not dominated by any key in the left partitions; and 3) the section $p_{d}$ containing the keys marked for deletion. 
 }
 \label{fig:block_structure}
 \end{center}
 \end{figure}
 
-% Extended algorithm, structure of a blocks
-% TODO: don't want to reference it again
-% Fig.\ \ref{fig:block_structure} shows the structure of a block, after it was partitioned.
 
-% extended algorithm
-The partitioning procedure (Algorithm \ref{algo:partition}) is adapted as follows to handle non-active tasks:
-\begin{itemize}
-\item Only active tasks are sampled for the pivot element.
-\item An additional partition, called $p_{na}$, is used for storing the non-active tasks.
-Initially, we have $na = end$.
-\item If a non-active task is encountered during the scan for the next task to swap, it is swapped out to the section holding the non-active tasks. 
-\end{itemize}
-
-The adopted procedure is shown in Algorithm \ref{algo:partition_with_nonactive}.
-An example illustrating the procedure is shown in Fig. \ref{fig:partition_with_nonactive}.
+\medskip
+\noindent
+\textbf{Handling dead, taken and removed tasks}. Once a key was returned by \verb|pop|, it has to be removed from the queue. 
+Furthermore, keys associated with tasks that have been marked dead or taken also need to be removed. 
+% active, non-active tasks
+We will subsume all those tasks as ``non-active'' and its associated keys as deleted, whereas a task still awaiting execution is called an active task,
+% How a block handles dead tasks
+Speaking informally, each block moves its deleted keys to the end of the block and keeps them there.
+Once the block gets merged with another block, the deleted keys of both blocks are moved to the end of the block generated by the merge and thus the deleted keys gradually accumulate in consecutive ranges and, once the number of deleted keys is large enough, part of them can be removed via the \verb|remove| operation of the Virtual Array. Smaller ranges will move to the end of the LSML and accumulate there.
 
 \begin{algorithm}
-\caption{Pseudo-code for partitioning with non-active tasks}
+\caption{Pseudo-code for partitioning with deleted keys}
 \label{algo:partition_with_nonactive}
 \begin{algorithmic}[1]
-\Function{Partition}{Block $b$, $left$, $right$}
-\State $x \gets$ \Call{pivot}{$b$, $l$, $r$}
-\State $non\_active \gets right$ 
 \While{$left < right$}
-  \While{$left < right$}
-    \If{$left$ is an active task}
-      \If{$left \less_k x$} \Comment{If the task at $left$ has...}
-	\State $left = left + 1$  \Comment{...less priority than the pivot, it stays,...}
-      \Else \State break; \Comment{...otherwise, it is moved to the right partition.}
-      \EndIf
-    \Else \Comment{$left$ is a non-active task}
-      \State $non\_active = non\_active - 1$; \Comment{Now points to an active task}
-      \State swap the tasks $b[left]$ and $b[non\_active]$
-      \If{$non_active == right$} $ right = right - 1 $;
-      \EndIf
+\State key $k \gets b[left]$
+\If{$k$ is a non-deleted key}
+    \If{$k \less_i x$}
+    \State $left = left + 1$  \Comment{If $k$ has less priority than the pivot, it stays}
+    \Else
+    { break;} \Comment{Otherwise, it is moved to the right partition}
     \EndIf
-  \EndWhile
-  \While{$left < right$}
-    \If{$right$ is an active task}
-      \If{$right \moreeq_k x$} \Comment{If the task at $right$ has more or equal...}
-	\State $right = right - 1$  \Comment{...priority as the pivot, it stays,...}
-      \Else \State break; \Comment{...otherwise, it is moved to the left partition.}
-      \EndIf
-    \Else \Comment{$right$ is a non-active task}
-      \State $non\_active = non\_active - 1$
-      \If {$right == non\_active$} $right = right - 1$
-      \Else
-	\State Swap the tasks $b[right]$ and $b[dead]$;
-	\State $left = left + 1$
-	\State $right = right - 1$
-      \EndIf
+\Else \Comment{$k$ is a deleted key}
+    \State $delete = delete - 1$; 
+    \State swap keys $b[left]$ and $b[delete]$
+    \If {$right == delete$} $right = right - 1$
     \EndIf
-  \EndWhile
-  \If{$left < right$}
-    \State Swap the tasks $b[left]$ and $b[right]$;
-  \EndIf
+\EndIf
 \EndWhile
-\Statex \Comment{Check if tasks at $left$ belongs to left partition (as above).}
-\Statex \Comment{Partition recursively, if necessary (as above).}
+\While{$left < right$}
+\State key $k \gets b[right]$
+\If{$k$ is a non-deleted key}
+    \If{$k \moreeq_i x$}
+    \State $right = right - 1$   \Comment{If the pivot has less priority than $k$, $k$ stays}
+    \Else { break;} \Comment{Otherwise, $k$ is moved to the left partition.}
+    \EndIf
+\Else \Comment{$k$ is a deleted key}
+    \State $delete = delete - 1$
+    \If {$right == delete$} $right = right - 1$
+    \Else
+    \State Swap the keys $b[right]$ and $b[delete]$;
+    \EndIf
+\EndIf
+\EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+% extended algorithm
+The partitioning procedure is adapted as follows to handle deleted keys (Algorithm \ref{algo:partition_with_nonactive} replaces lines 4-9 in Algorithm \ref{algo:partition}):
+\begin{itemize}
+\item An additional partition, called $p_{d}$, is used for storing the deleted keys. The index $delete$ is used to keep track of it and is initially set to $right$, i.e., the end of the range to be partitioned.
+\item If a deleted key is encountered during the scan for the next key to swap, it is swapped out to the section $p_d$ holding the deleted keys. 
+\end{itemize}
+
+\begin{lemma}
+The partition operation has worst-case complexity $O(n^2)$.
+\end{lemma}
+\begin{proof}
+The complexity of Algorithm \ref{algo:partition} is dominated by the outer while-loop (lines 3-15) and the recursive call (generating a pivot element requires $O(n)$, the checks in lines 16 and 18 require constant time). 
+The loop is executed at most $n$ times, since either $left$ is incremented or $right$ is decremented at least 1 in each execution. Each execution of one of the inner loops (lines 4-6 and 7-9, respectively) reduces the number of executions of the outer loop by 1. 
+
+The same argument holds for the modification (given in Algorithm \ref{algo:partition_with_nonactive}, with one exception: When, while scanning from left (right), a deleted key is encountered, it is swapped to section $p_d$. 
+If $delete$ and $right$ point to the same location, $right$ can be decremented since the key it points to is a deleted one and therefore does not have to be moved anymore. 
+If that is not the case however, neither $left$ nor $right$ may be advanced, since the items at their respective locations have not been checked yet. 
+This, however, can happen at most $n$ times for the whole block, since $right <= delete$ always holds and thus the worst-case complexity does not change.
+
+Due to Assumption \ref{ass:partition_succeeds}, we know that each successive call reduces the size of the range that remains to be partitioned by at least 1 item, in a constant number of partitioning attempts. 
+Thus, the recursion depth is bounded by $O(n)$ and partitioning requires $O(n^2)$ time in the worst case.
+\end{proof}
+
+\begin{conjecture}
+Partition has expected time complexity $O(n \log n)$.
+\end{conjecture}
+The conjecture is immediate if one assumes that each pivot element is taken from a key close to the median (when ordered keys by their values at dimension $i$, which the pivot is taken from) to be partitioned, since each partitioning step would half the size of the range that requires further partitioning.
+To prove the conjecture formally, assumptions about the distribution of the keys would have to be made. 
+
+The deleted keys are only touched once to move them to the section of deleted items and that the number of non-deleted items in a block never increases. This further indicates reasonable performance in practice.
+
+
+\subsubsection*{Removing deleted keys}
+After partitioning the whole block, its level is reduced as far as possible and, in case the section containing deleted keys is large enough, part of them are removed from the LSML via the \verb|remove| operation of the Virtual Array (Algorithm \ref{algo:partition_block}).
+The level $l$ of a block $b$ can be reduced if
+\begin{itemize}
+\item $l > 0$ (the minimum level of a block is $0$), and 
+\item the level of the block succeeding $b$ is is smaller than $l$ (if such a block exists), and
+\item all non-deleted keys are covered after reducing the level, i.e., the $delete$ index must remain inside the range of keys covered by the block.
+\end{itemize}
+
+\begin{algorithm}
+\caption{Pseudo-code for partitioning a block}
+\label{algo:partition_block}
+\begin{algorithmic}[1]
+\Function{PartitionBlock}{Block $b$}
+\State \Call{Partition}{$b$, $0$, size of $b - 1$} \Comment{Step 1: Partition the block}
+\State $l \gets $ level of $b$ \Comment{Step 2: Reduce the level of the block as far as possible}
+\State $l_s \gets $ level of the successor of $b$
+\While{$l > 0$ and $l_s < l$ and $delete < s_p  2^{l-1}$}
+\State $l = l-1$
+\EndWhile
+\State \Call{remove}{$delete$, end of block $b$} \Comment{Step 3: Remove deleted keys}
 \EndFunction
 \end{algorithmic}
 \end{algorithm}
+
+\begin{lemma}
+The time complexity of the \textsc{PartitionBlock} function (Algorithm \ref{algo:partition_block}) is dominated by the \textsc{Partition} function.
+\end{lemma}
+\begin{proof}
+The loop at lines 5-7 is executed at most $l$ times. Since $n = 2^{\log l}$ (by definition of a block), this is equivalent to $\log n$. 
+Removing a range of items from the Virtual Array requires $O(1)$ time (see Section \ref{sec:virtual_array}).
+\end{proof}
+
+\begin{lemma}
+After partitioning a block, it uses $O(n)$ memory to store $n$ keys. 
+\end{lemma}
+\begin{proof}
+Since \textsc{Partition} moves all deleted keys to the section of deleted keys, this follows directly from the call of to \textsc{Remove} at the end of the \textsc{PartitionBlock} procedure.
+\end{proof}
 
 \begin{figure}
 \begin{center}
 \begin{tikzpicture}
 \end{tikzpicture}
-\caption{Example of a partition run with non-active tasks}
+\caption{Example of a partition run with deleted keys}
 \label{fig:partition_with_nonactive}
 \end{center}
 \end{figure}
 
-\subsubsection*{Analysis} \label{sec:mcpq:description:partition:analysis}
-\todo{this might be hard}
-
 \subsubsection{Peek} \label{sec:mcpq:description:peek}
-% peek
-Once a block is partitioned, the \verb|peek| operation (Algorithm \ref{algo:peek} is relatively easy:
-We simply need to scan the right partition. The first encountered active task is kept as a candidate and compared to all remaining tasks in the partition to ensure that it is not dominated by any of them; if it is, the dominating task is taken as the new candidate.
-% falling back
-In case no active task is found in the right partition, we simply fall back to the previous partition: since the right partition does not contain any active task, it is merged with the section holding non-active tasks; the left partition with highest index is then taken as the new right partition.
-This partition might have to be partitioned further, since it can be arbitrarily large and thus exceed the size $s_p$ that we aim for the right partition. 
-Once the top partition again falls below $s_p$, we can again scan for an active task.
-% dead block
-In case no active task can be found in the whole block (i.e., after falling back to the last existing partition), the whole block is marked as non-active, implying that no more peek operations have to be executed on it.
-
-\begin{figure}
-\begin{center}
-\caption{Peek and falling back}
-\label{fig:peek}
-\begin{tikzpicture}
-\end{tikzpicture}
-\end{center}
-\end{figure}
-
 \begin{algorithm}
 \caption{Pseudo-code for the peek operation}
 \label{algo:peek}
 \begin{algorithmic}[1]
-\Require{Block $b$ is partitioned into partitions $p_{l1},\dots , p_{li}, p_r, p_{na}$} 
+\Require{Block $b$ is partitioned into partitions $p_{l1},\dots , p_{li}, p_r, p_{d}$} 
 \Function{peek}{Block $b$}
-\State Task $t = null$ 
-\ForAll{Tasks $x$ in $p_r$} \Comment{Scan the right partition}
-  \If{$t == null$ or $x \less t$} $t = x$
+\State key $k = null$ 
+\ForAll{Keys $x$ in $p_r$} \Comment{Scan the right partition}
+  \If{$k == null$ or $x \less k$} $k = x$
   \EndIf
 \EndFor
-\If{$t == null$} \Comment{No active task in the right partition}
-  \State Extend $p_{na}$ to include $p_r$ \Comment{Add all the tasks in $p_r$ to the non-active tasks section}
-  \If{$p_{l1} < p_{na}$}
+\If{$k == null$} \Comment{No active task in the right partition}
+  \State Extend $p_{d}$ to include $p_r$ \Comment{Add all the tasks in $p_r$ to the non-active tasks section}
+  \If{$p_{l1} < p_{d}$}
     \State Set $p_r \gets p_{li}$
-    \State \Call{Partition}{$b$, $p_r$, $p_{na}$} \Comment{Further partition $p_r$}
-    \State \Call{peek}{$b$}	\Comment{Call peek on the new right partition again}
+    \State \Call{Partition}{$b$, $p_r$, $p_{d}$} \Comment{Further partition $p_r$}
+    \State $k \gets $ \Call{peek}{$b$}	\Comment{Call peek on the new right partition again}
   \EndIf
 \EndIf
-\State \Return{$t$}
+\State \Return{$k$}
 \EndFunction
 \end{algorithmic}
 \end{algorithm}
+% peek
+Once a block is partitioned, the \verb|peek| operation (Algorithm \ref{algo:peek} is relatively easy:
+We simply need to scan all the non-deleted keys in the right partition. The first encountered key is kept as a candidate and compared to all remaining keys in the partition to ensure that it is not dominated by any of them; if it is, the dominating key is taken as the new candidate.
+% falling back
+In case no such key is found in the right partition, we simply fall back to the previous partition: since the right partition does not contain any key, it is merged with the section holding the deleted keys; the left partition with highest index is then taken as the new right partition.
+This partition might have to be partitioned further, since its size is bounded from above only by $O(n)$ and thus may exceed the size $s_p$ that we aim for the right partition. 
+Once the top partition falls below $s_p$, we can again scan for a non-dominated key.
+% dead block
+In case no such key can be found in the whole block (i.e., after falling back to the last existing partition), the whole block is marked as deleted, implying that no more peek operations have to be executed on it.
+
+\begin{lemma}
+The \verb|peek| operation has amortized time complexity $O()$ \todo{what?}
+\end{lemma}
+\begin{proof}
+
+\end{proof}
 
 \subsubsection{Take} \label{sec:mcpq:description:take}
-While the \verb|peek| operation finds a Pareto-optimal task without removing it from the queue, the \verb|take| operation removes a given task from the MCPQ by marking it as taken before returning it.
+While the \verb|peek| operation finds a Pareto-optimal key without removing it from the queue, the \verb|take| operation removes a given key from the MCPQ by marking it as deleted.
+Subsequent \verb|push| and \verb|pop| operations will eventually remove the deleted key from the priority queue.
+The \verb|take| operation thus trivially has complexity $O(1)$.
 
-\subsubsection{Managing blocks} \label{sec:mcpq:description:managing_blocks}
+
+\subsubsection{Merging blocks} \label{sec:mcpq:description:merging_blocks}
 % adding elements
-As outlined above, all items that are added to the MCPQ are first stored in a special block of level 0, called $b_\text{insert}$. 
-Once this block is full, it is merged with the block $b_0$ (also of level 0) to create a block of level 1. 
-% merging
-A merge of two adjacent blocks is performed by extending the first block to cover both its own and the other block's items.
-% repartition
-The resulting block then needs to be partitioned again.
-
-% removing elements
-When a task is to be removed from the queue (either by a \verb|pop| operation, or by being marked as dead or taken), it is not immediately deleted from the queue, since this would not allow us to maintain the logarithmic structure of the blocks.
-Instead, non-active tasks are collected by each block and migrate towards the end of the queue with each merging operation. 
-Once they reach the very last block, the non-active tasks can savely be removed from the priority queue.
-
-
-% The problem
-This implies that the MCPQ may contain a large number of non-active tasks and that their removal depends on the occurrence of merging operations. 
-
-\todo{we need to bound the number of elements in the MCPQ}
+As outlined above, all items that are added to the MCPQ are first stored in a special block of level 0, called $b_a$. 
+Once this block is full, a new block of level 0 is created and all keys from the block $b_a$ are moved there.
+If another block of level 0 already exists, the two blocks are merged to create a block of level 1. 
+This merging operation is continued as long as there are two blocks of same level (note that due to the structure of the LSML, two blocks of same level are always neighbors).
+The block resulting from this merging operation has to be partitioned again to ensure that \verb|peek| can find a Pareto-optimal key in constant amortized time \todo{this has yet to be shown}.
 
 \begin{algorithm}
 \caption{Pseudo-code for merging several blocks}
 \label{algo:merge_from}
 \begin{algorithmic}[1]
-\Function{merge\_from}{Block $b$}
-\State let $b_p$ be the block predecessing $b$
+\Function{MergeFrom}{Block $b$}
+\State let $b_p$ be the block preceding $b$
 \State $merged \gets false$
-\While{$b_p$ exists and is either a non-active block or of same level as $b$ }
+\While{$b_p$ exists and is either a deleted block or of same level as $b$ }
 \State merge $b_p$ and $b$
 \State $b \gets b_p$
 \State $b_p \gets$ predecessor of $b$
@@ -1041,84 +1072,105 @@ This implies that the MCPQ may contain a large number of non-active tasks and th
 \end{algorithmic}
 \end{algorithm}
 
+\begin{lemma}
+
+\end{lemma}
+
+\begin{proof}
+
+\end{proof}
 
 \subsubsection{Push} \label{sec:mcpq:description:push}
-Adding new tasks to the MCPQ via the \verb|push| operation is quite simple, as shown in Algorithm \ref{algo:push}.
-Once the insertion block is full, all the tasks it contains are moved to an new block at the end of the linked list and blocks are merged if necessary.
+Adding keys to the MCPQ via the \verb|push| operation is quite simple, as shown in Algorithm \ref{algo:push}. 
+In case the block $b_a$ is full, a new block of level 0 is created and all keys from block $b_a$ are moved there. Blocks are then merged, if necessary.
 
 \begin{algorithm}
 \caption{Pseudo-code for the push operation}
 \label{algo:push}
 \begin{algorithmic}[1]
 \Require{Insert-block $b_\text{insert}$}
-\Function{Push}{Task $t$}
-\If{$b_\text{insert}$ is full}
-  \State Create a new block $b$ at the end of the linked list
-  \State Move all elements from $b_\text{insert}$ to $b$
-  \State \Call{merge\_from}{$b$}
+\Function{Push}{Key $k$}
+\If{$b_a$ is full}
+  \State Create a new block $b$ of level 0 at the end of the linked list
+  \State Move all elements from $b_a$ to $b$
+  \State \Call{MergeFrom}{$b$}
 \EndIf
-\State Insert $t$ in $b_\text{insert}$
+\State Insert $k$ in $b_\text{insert}$
 \EndFunction
 \end{algorithmic}
 \end{algorithm}
 
-\bigskip
-\noindent
-\textbf{Analysis.}
-\todo{again, this might be hard}
+\begin{lemma}
+The \verb|push| operation has amortized time complexity $O()$ \todo{well, what?}.
+\end{lemma}
+\begin{proof}
+
+\end{proof}
+
 
 \subsubsection{Pop} \label{sec:mcpq:description:pop}
 \begin{algorithm}
 \caption{Pseudo-code for the pop operation}
 \label{algo:pop}
 \begin{algorithmic}[1]
-\Function{pop}{item $boundary$}
-\State Item $item_{best} \gets$ \Call{peek}{insertion block}
-\State Block $b_{best} \gets$ insertion block
-\State Block $b \gets $ insertion block
+\Require{Block $b_a$}
+\Function{pop}{}
+\State Key $k_{best} \gets$ \Call{peek}{$b_a$}
+\State Block $b_{best} \gets b_a$
+\State Block $b \gets b_a $d
 \While{$b.next$ exists}
   \State $b \gets b.next$
-  \If{$b$ is non-active}
+  \If{$b$ is marked deleted}
     \State continue
   \EndIf
-  \State Item $item \gets$ \Call{peek}{$b$}
-  \If{$item == null$}
-    \State mark $b$ as non-active block
+  \State Key $k \gets$ \Call{peek}{$b$}
+  \If{$k == null$}
+    \State mark $b$ as deleted block
   \Else
-    \If{$!item_{best} || item \less item_{best}$}
-      \State $item_{best} \gets item$
+    \If{$k_{best} == null$ or $k \less k_{best}$}
+      \State $k_{best} \gets k$
       \State  $b_{best} \gets b$ 
     \EndIf
-    \State \Call{try\_reduce\_level}{$b$}
-    \State \Call{merge\_from}{$b$}
+    \State \Call{MergeFrom}{$b$}
   \EndIf
 \EndWhile
+\State \Return{$k$}
 \EndFunction
 \end{algorithmic}
 \end{algorithm}
 
+
+\begin{lemma}
+The \verb|pop| operation has amortized time complexity $O()$ \todo{well, what?}.
+\end{lemma}
+\begin{proof}
+
+\end{proof}
 
 \subsubsection{Spying} \label{sec:mcpq:description:spying}
 \begin{algorithm}
 \caption{Pseudo-code for the spy operation}
 \label{algo:spy}
 \begin{algorithmic}[1]
-\Function{spy}{item $boundary$}
+\Function{spy}{}
 \State Place $other \gets item.owner$
-\If{$item$ is taken}
-  \State return $null$
-\EndIf
-\For{$i \gets other.begin$; $i < other.end$; $i++ $}
-  \State Item $item \gets other[i]$
-  \If{$item$ is active}
-    \Call{Put}{$item$}
+\For{$i \gets other.begin$; $i < other.end$; $i = i+1 $}
+  \State Key $k \gets other[i]$
+  \If{$k$ is a non-deleted key}
+    \Call{Put}{$k$}
   \EndIf
 \EndFor
-
-
 \EndFunction
 \end{algorithmic}
 \end{algorithm}
+
+\begin{lemma}
+The \verb|spy| operation has amortized time complexity $O()$ \todo{well, what?}.
+\end{lemma}
+\begin{proof}
+
+\end{proof}
+
 
 \subsection{Integration in Pheet} \label{sec:mcpq:pheet_integration}
 % Strategy scheduler 2
