@@ -448,6 +448,18 @@ It is important to note that a block is only a logical construct which provides 
 This range is identified by the offset $o$ of the block and its capacity.
 Thus, any operation performed at position $i$ within a block is actually performed at position $o+i$ within the virtual array.
 
+% Memory management: tricky, we use Pheet's capabilities.
+Memory management for concurrent data structures can be hard, since a shared object may only be deleted if it can be guaranteed that the object is not accessed by any thread at the time of deletion.
+Pheet therefore provides a wait-free memory reuse scheme (see \cite{Wimmer14}, Section 4.3).
+We will not concern ourselves with memory management in this work, but make the following assumptions, justified by Lemmas 4.3.2 and 4.3.3 in \cite{Wimmer14}:
+
+\begin{assumption}
+Deleting objects savely requires $O(1)$ time.
+\end{assumption}
+
+\begin{assumption}
+When employing a memory manager to manage memory of size $n$, the size of the allocated memory is $O(n)$.  
+\end{assumption}
 
 % keys
 As usual in the literature, we will denote the items managed by a priority queue as \emph{keys}.
