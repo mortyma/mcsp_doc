@@ -25,6 +25,7 @@
 \usepackage{listings}
 \usepackage{graphicx}
 \usepackage{color}
+\usepackage{xcolor}
 \floatstyle{plaintop}
 \usepackage{float}
 \restylefloat{table}
@@ -1189,38 +1190,8 @@ For a detailed description of the base classes and correctness proofs, we refer 
 
 
 \subsection{Implementation} \label{sec:mcpq:impl_analysis}
-\todo{say that we proceed in a bottom-up manner}
-\subsubsection*{Other stuff}
-\todo{This does not really fit here}
-Furthermore, such a \emph{distributed} implementation of the MCPQ avoids performance bottlenecks inherent to centralized data structures.
-
-% lock- and wait-free
- To provide good progress guarantees, the MCPQ is implemented as a lock- and wait-free data structure. 
-\todo{More here? or just refer to diss. p. 49? This last sentence doesn't fit anyway}
-
-
-
-\subsubsection{Interfaces, overview}
-% PriorityVector
-We map the mathematical concept to an object as shown in Listing \ref{lst:priority_vector}, with \verb|PriorityValue| representing a value from a domain $U_i$ for $1 \leq i \leq d$.
-We use this representation of a priority vector when referencing it in pseudo-code. 
-\begin{code}[label=lst:priority_vector, caption=PriorityVector]
-/* To be implemented by the application. */
-class PriorityVector {
-
-  /* Get the priority value at dimension d */
-  PriorityValue priority_at(int d);
-  
-  /* Return true if this priority vector at dimension d has a priority value smaller than v */
-  bool less_priority(int d, PriorityValue v);
-  
-  /* Return true if this priority vector at dimension d has a priority value greater than v */
-  bool greater_priority(int d; PriorityValue v);
-}
-\end{code}
-
 % A general, high level overview and interfaces
-The class \verb|ParetoItem| (Listing \ref{lst:PTSItem}) is used to represent tasks managed by scheduler. It references an object of type \verb|SchedulerTask| (Listing \ref{lst:SchedulerTask})(which contains the code to be executed, i.e., the work the task is to perform) and an object implementing the \verb|ParetoStrategy|-interface (Listing \ref{lst:ParetoStrategy}) (which handles the priority of the task).
+The class \verb|ParetoItem| (Listing \ref{lst:PTSItem}) is used to represent tasks managed by scheduler. It references an object of type \verb|SchedulerTask| (Listing \ref{lst:SchedulerTask}), which contains the code to be executed, i.e., the work the task is to perform, and an object implementing the \verb|ParetoStrategy| interface (Listing \ref{lst:ParetoStrategy}), which handles the priority of the task and allows to mark it as dead.
 
 The \verb|ParetoItem| class has to guarantee that its \verb|take| operation returns the referenced task exactly once, even if multiple threads execute it concurrently. 
 Although an item is at first only visible to the thread creating it (also called the \emph{owning} place), this may change after another thread performs a \verb|steal| operation on the priority queue of the owning place.
@@ -1259,22 +1230,6 @@ class SchedulerTask {
 }
 \end{code}
 
-% Strategy
-\begin{code}[label=lst:ParetoStrategy, caption=Interface of ParetoStrategy]
-/* To be implemented by the application. */
-class  {
-
-  void initialize(PriorityVector v);
-  
-  PriorityVector priority_vector();
-  
-  /* Return true if the priority vector of this strategy is not dominated by the priority vector of other. */
-  bool prioritize(ParetoStrategy other);
-  
-  /* Return true if the associated task is marked as dead; i.e., if it needn't be executed anymore. */
-  bool dead_task();
-}
-\end{code}
 The central -- or global -- part of the MCQP is implemented in \verb|ParetoTaskStorage| (Listing \ref{lst:ParetoTaskStorage}), which is mostly used for rerouting \verb|pop| and \verb|steal| operations to the place-local parts of the MCPQ, implemented in \verb|ParetoTaskStoragePlace| (Listing \ref{lst:ParetoTaskStoragePlace}). 
 % boundary
 Notice that the \verb|pop| and \verb|steal| operations of both classes have an additional parameter called the boundary item. 
@@ -1318,68 +1273,6 @@ class ParetoTaskStorage : Strategy2BaseTaskStorage {
 }
 \end{code}
 
-
-
-
-\begin{comment}
-\section{Bits and pieces}
-
-% concurrent DS
-A priority queue for Pheet needs to be able to handle \emph{concurrent} accesses by multiple threads since each thread will fetch tasks to execute from the queue and insert newly generated tasks into the queue.
-
-%Node
-\todo{do we really need this? or can we assume that it is known/intuitively understandable?}
-
-\begin{minipage}[c]{\linewidth}
-\begin{lstlisting}[label=lst:Node, caption=Basic structure and operations of Node.]
-class Node {
-  /* All nodes adjacent to an outgoing arc of this Node. */
-  Set<Node> neighbors();
-}
-\end{lstlisting}
-\end{algorithm}
-
-% Path
-\begin{minipage}[c]{\linewidth}
-\begin{lstlisting}[label=lst:Path, caption=Basic structure and operations of Path.]
-class Path {
-  Path step(Arc a);
-  Node tail();
-  Node head();
-  Weight_Vector weight();
-  bool dominated;
-}
-\end{lstlisting}
-\end{algorithm}
-
-% pareto priority queue idea
-%\begin{comment}
- \cite{Wimmer14}
-
-% What does the scheduler do?
-The task parallel model is independent of any machine specifics such as the number of processors and the memory hierarchy.
-It merely exposes the available work to the \emph{scheduler}, which is responsible for devising a schedule , i.e., a mapping of tasks to the processors, thereby determining which processor executes a task as well as the execution order of the tasks. 
-The scheduler 
-
-% Online/offline scheduling; what is used in Pheet and why
-The schedulers developed for Pheet employ \emph{online scheduling}, where -- in contrast to \emph{offline scheduling} -- the schedule cannot be precomputed statically, since not all the required information is available before the execution.
-This is due to e.g., new tasks being created during the execution and/or the nondeterministic execution time of tasks.
-
-% Explain that we don't explain scheduling
-Task scheduling itself is a vast and active area of research with many different variations in the problem setting and models.
-Since we do not deal with any complex scheduling in this work, we refrain from giving a more elaborate introduction and refer the reader to the Wimmer's dissertation\cite{Wimmer14}, which contains several pointers to the literature.
-% task parallelism
-Additionally, the programmer may define dependencies between the tasks which ensure that a task is not executed before all required prerequisites are met; if, however, two tasks do not depend on each other, they may be executed in parallel (or sequentially in arbitrary order).
-\todo{the above is quite general and does not really relate to the rest of the work or pheet.}
-
-Furthermore, once a place starts executing a task, the task will stay at this place until its execution is finished. 
-
-%This is not relevant
-By uniquely identifying processors, places simplify the implementation of parellel algorithms and data structures.
-
-Furthermore, places are employed to deal with aspects related to the memory hierarchy as well as locality. 
-However, as those concepts are not considered in our contribution, we refer the interested reader to the work of Wimmer\cite{Wimmer14}.
-\end{comment}
 
 \section{Shortest path problems} \label{sec:shortest_path}
 % Informally introduce shortest path
@@ -1576,7 +1469,7 @@ We want to compute an exact solution of the MSP for directed graphs with multi-d
 % Intro to the algorithm: generalization of Dijkstra
 The algorithm follows the principles of Dijkstra's algorithm: we generate a set of candidates and expand the most promising first. The problem of finding intermediate paths that are Pareto-optimal is delegated to a priority queue. 
 % we have a set of solutions for each node
-Note that due to the multi-dimensional weight vectors, we have a set of optima for each node (see Section \ref{sec:pareto_optima}.
+Note that due to the multi-dimensional weight vectors, we have a set of optima for each node (see Section \ref{sec:pareto_optima}).
 % The algorithm is label-correcting (no strict sequence)
 In contrast to Dijkstra's algorithm, ours is a \emph{label correcting} algorithm.
 The weight vectors are only partially ordered and thus there can be multiple Pareto-optimal candidates that may be expanded in arbitrary order. 
@@ -1638,25 +1531,28 @@ The procedure for expanding a candidate path is described in detail in Algorithm
 \subsection{Implementation} \label{sec:msp_algo:implementation}
 % Connection to Pheet
 The implementation relies on the Pheet task scheduling framework for parallelization and, in particular, on Pheet's concept of \emph{priority task scheduling} (Section \ref{sec:pheet:task_priorites}), which allows to combine the work pool of the scheduler with the priority queue used by the algorithm into one data structure: a priority-aware task scheduler.
-
 % Each path to expand is a task
 The algorithm can be parallelized in an intuitive way by wrapping each candidate path into a task. 
 Note that expanding several paths can be done independently, except for updates to the Pareto-set of a given node.
 
-
-
 % Works with different schedulers/task storages
+\begin{code}[label=lst:ParetoSet, caption=Pareto set operations., mathescape]
+class ParetoSet {
+  /* Insert $\color{OliveGreen} p = \langle s,\dots, v\rangle$ into the Pareto set at node $\color{OliveGreen} v$. Any path $\color{OliveGreen} p'$ in that set dominated by $\color{OliveGreen} p$ is marked dominated and removed from the set. If $\color{OliveGreen} p$ is dominated by a path $\color{OliveGreen} p'$ already in the set, $\color{OliveGreen} p$ is marked dominated and is not inserted into the set. Returns true if $\color{OliveGreen} p$ was inserted into the Pareto set. */ 
+  bool insert(Path p);
+}
+\end{code}
+
 We designed the implementation s.t.~it may easily employ different task scheduler implementations without any changes to the algorithm itself. 
 Within this framework, we only have to provide implementations of 
 \begin{inparaenum}[(i)]
 \item the task and 
 \item a scheduling strategy.
 \end{inparaenum}
-
 % Pareto set
-For the implementation, we extend the Pareto-set by the \verb|insert| operation to provide some of the functionality required in the procedure for expanding a path (Algorithm \ref{algo:abstractExpand}, in particular lines 4 - 10).
+For the implementation, we extend the Pareto-set (Lst.\ \ref{lst:ParetoSet}) by the \verb|insert| operation to provide some of the functionality required in the procedure for expanding a path (Algorithm \ref{algo:abstractExpand}).
 In particular, \verb|insert|, given a path $p = \langle s,\dots,v \rangle$, removes all paths at node $v$ which are dominated by $p$; if however, $p$ is dominated by some path $p'$ in the Pareto-set for node $v$, $p$ is not added to the Pareto-set but is instead marked as dominated itself. 
-The operation returns true if and only if $p$ was actually added to the Pareto-set.
+The operation returns true if and only if $p$ was added to the Pareto-set.
 Note that for any path $p$, only one of the following two alternatives may occur:
 \begin{itemize}
 \item $p$ is added to the Pareto-set and some paths $p'$ that are dominated by $p$ are marked dominated and removed from the set.
@@ -1667,47 +1563,25 @@ To see this, assume that the Pareto-set contains two paths $p_1$ and $p_2$, wher
 The \verb|insert| operation would first remove $p_1$ since $p \less p_1$ and then mark $p$ dominated since $p_2 \less p$. 
 However, due to transitivity of the dominance relation, this implies $p_2 \less p_1$. 
 
-
 % Pareto set implementation
-A naive implementation only needs to scan the Pareto-set either until it finds a path $p'$ that dominates $p$ or and remove all paths dominated by $p$ 
+A naive implementation only needs to scan the Pareto-set either until it finds a path $p'$ that dominates $p$ or remove all paths dominated by $p$.
 
-
-% Explain the pareto set: insert takes a single path instead of a whole set to simplify the explanation somewhat.
-\begin{code}[label=lst:ParetoSet, caption=Pareto set operations.]
-class ParetoSet {
-  /* Insert p into the Pareto-set. Any path p' that is dominated by p is marked dominated and removed from the set. If p is dominated by a path p' already in the set, p is be marked dominated and is not inserted into the set. Returns true if p was inserted into the Pareto-set. */
-  bool insert(Path p);
-}
-\end{code}
-
-
-% Msp task
-%\begin{minipage}[c]{\linewidth}
-%\begin{algorithm}
-%\label{lst:MSPTask}
-\begin{code}[caption=MSP Task, label=MSP Task]
+\begin{code}[caption=MSP Task, label=lst:msptask, mathescape]
 class MSPTask : SchedulerTask {
 public:
 
   MSPTask(Path p, ParetoSets Sp) //Constructor. Save parameters.
-      : p(p), Sp(Sp) { }
+    : p(p), Sp(Sp) { }
   
   void execute() {
     /* The path this task was spawned for might be obsolete. */
-    if(p.dominated) return;	
-    Set<Path> candidates;
-    /* Generate new candidates */
+    if(p.dominated) return;  
+    /* Generate new candidates and add them to the global Pareto set */
     for (Arc a : p.head().outgoing_edges()) {
-      Path q = p.step(e);
-      candidates.insert(q);
-    }
-    /* Add the candidates to the global pareto sets */
-    Set<Path> added;
-    added = Sp.insert(candidates);
-    for (Path p : added) {
-      if(!p.dominated()) {
-	/* Spawn a new task for each added path */
-	spawn_task(p, Sp);
+      Path candidate = p.step(e);
+      if(Sp.insert(candidate)) {
+        /* Spawn a new task for each candidate path that was added to the Pareto set */
+        spawn_task(p, Sp, strategy);
       }
     }
   }
@@ -1716,55 +1590,60 @@ private:
   ParetoSets Sp;
 }
 \end{code}
-%\end{algorithm}
 
-\begin{comment}
-% Msp task
-\begin{algorithm}
-\caption{MSP Task}
-\label{algo:msptask}
-\begin{algorithmic}[1]
-   \Function{initialize}{Graph $g$, Path $p$, Pareto\_Sets $s$} 
-      \State $\sC \gets \{\}$ \Comment{Set of candidates a task generates}
-      \State $\dots$  \Comment{Store $g$, $p$ and $s$ for this instance of Task}
-   \EndFunction
-  \Statex
-  \Function{execute}{}
-    \If{$p$ is dominated} 
-      \State return	\Comment{This task instance is obsolete}
-    \EndIf
-    \State Node $h \gets p$.head	\Comment{The last node of path $p$}
-    \ForAll{$v \in h$.neighbors} \Comment{All neighbors of $h$}
-      \State $\sC = \sC \cup \cP{p}{v}$ \Comment{Generate candidates}
-    \EndFor
-    \State $\sA \gets s$.insert(\sC) \Comment{Inserts the generated candidates into global Pareto set}
-    \Statex \Comment{$\sA$ contains candidates not dominated by any path in $s$}
-    \ForAll{$p\in \sA$}
-      spawn\_task($g$, $p$, $s$) \Comment{Spawn a new task for each candidate}
-    \EndFor
-  \EndFunction
-\end{algorithmic}
-\end{algorithm}
-\end{comment}
-
-The following implementation variants are provided:
+An implementation of the Pheet-based MSP algorithm is given in Lst.\ \ref{lst:msptask}. 
+The \verb|spawn_task| function (line 15) is generic and allows tasks to be spawned with different strategies.
+The scheduler uses the strategy -- that is to be defined by the application -- to determine the order of tasks.
+Furthermore, tasks may be marked dead via their associated strategy in case they were spawned speculatively and need not be executed anymore.
+We provide two strategies that are based the generic \verb|Strategy| class (Lst.\ \ref{lst:strategy})
 \begin{itemize}
-% \item \verb|SequentialMsp|:
-% \item \verb|StrategyMsp|:
-\item \verb|Strategy2MspLSM|: \todo{we need to introduce the lsm somewhere}
-% \item \verb|Strategy2MspKLSM|:
-\item \verb|Strategy2MspPareto|:
+\item The \verb|LinearCombinationStrategy| (Lst.\ \ref{lst:LinearCombinationStrategy} assumes that a total order relation can be defined on the set of priority vectors. As Section \ref{sec:shortest_path:approx} shows, the $\leq_{sum}$ relation based on the $L¹$ norm constitutes such a relation for integer vectors (which, however, is not applicable in general).
+\item The \verb|ParetoStrategy| (Lst.\ \ref{lst:ParetoStrategy}) allows for general (i.e., non-integer) priority vectors and does not rely on a total order relation.
+Given two priority vectors, it offers function to check whether one dominates the other as well to compare them w.r.t.\ a given dimension.
 \end{itemize}
 
-% sequential algorithm: uses a priority queue
 
-% StrategyScheduler: 
+\begin{code}[label=lst:strategy, caption=Interface of the Strategy class, mathescape]
+class ParetoStrategy {
 
-% Strategy2Scheduler, variants:
+  void initialize(PriorityVector pv);
+    
+  /* Return true if the priority vector of this strategy has higher or equal priority than other. */
+  bool prioritize(PriorityVector other);
+    
+  /* Return true if the associated task is marked as dead; i.e., if it need not be executed anymore. */
+  bool dead_task();
+}
+\end{code}
 
-\subsection{Analysis} \label{sec:msp_algo:analysis}
+\begin{code}[label=lst:LinearCombinationStrategy, caption=LinearCombinationStrategy, mathescape]
+class ParetoStrategy {
+    
+  /* Return true if the priority vector of this strategy has higher or equal priority than other w.r.t. to the total order relation $\leq_{sum}$, i.e., the $L^1$ norm. */
+  bool prioritize(PriorityVector other) {
+    return sum(pv) <= sum(other);
+  }
+}
+\end{code}
 
 
+\begin{code}[label=lst:ParetoStrategy, caption=Interface of ParetoStrategy, mathescape]
+class ParetoStrategy {
+  /* Return true if the priority vector of this strategy has higher or equal priority than other w.r.t. the dominance relation, i.e., if other does not dominate the priority vector of this strategy. */
+  bool prioritize(PriorityVector other);
+  
+  /* Return true if the priority vector of this strategy at dimension d has less priority than v. */
+  bool less_priority(Dimension d, Value v);
+  
+ /* Return true if the priority vector of this strategy at dimension d has higher priority than v. */
+  bool higher_priority(Dimension d, Value v);
+}
+\end{code}
+
+When a new task is spawned with the \verb|ParetoStrategy|, the \verb|ParetoTaskStorage|, an implementation of our MCPQ (Section \ref{sec:mcpq}), is used by the scheduler. 
+Pheet's \verb|LSMLocalityTaskStorage| (see \cite{Wimmer14}) is used for tasks spawned with the \verb|LinearCombinationStrategy| strategy.
+We note here that Pheet provides several more priority queue implementations (or task storages in Pheet terminology) that the scheduler can employ. 
+However, the \verb|LSMLocalityTaskStorage| priority queue is the most suitable for a comparison with our MCPQ implementation since it too observes purely local ordering guarantees and is also based on log-structured merge-lists.
 
 \section{Performance evaluation} \label{sec:evaluation}
 
