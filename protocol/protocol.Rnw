@@ -1691,8 +1691,12 @@ Otherwise, the generated graph will contain no parallel edges.
 
 \section{Conclusion} \label{sec:conclusion}
 \todo{...}
+
 \section{Acknowledgements} \label{sec:ack}
-\todo{...}
+I sincerely want to thank my supervisor Martin Wimmer for providing this interesting and challenging topic as well as guidance and support throughout the duration of the project, as well as my co-supervisor Jesper Larsson Tr\"aff for valuable feedback.
+Some work, which is mostly covered by Section \ref{sec:msp_algo}, was done jointly with Jakob Gruber and I highly appreciate his contributions.
+Furthermore, I am especially grateful to all members of the ``Parallel Computing'' research group at the Vienna University of Technology for providing such a motivating and yet comfortable working environment.
+
 
 
 %bibliography
