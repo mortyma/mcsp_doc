@@ -454,21 +454,24 @@ Memory management for concurrent data structures can be hard, since a shared obj
 Pheet therefore provides a wait-free memory reuse scheme (see \cite{Wimmer14}, Section 4.3).
 We will not concern ourselves with memory management in this work, but make the following assumptions, justified by Lemmas 4.3.2 and 4.3.3 in \cite{Wimmer14}:
 
-\begin{assumption}
+\begin{assumption} \label{ass:deleteIsConstant}
 Deleting objects savely requires $O(1)$ time.
 \end{assumption}
 
-\begin{assumption}
+\begin{assumption} \label{ass:allocatedMemory}
 When employing a memory manager to manage memory of size $n$, the size of the allocated memory is $O(n)$.  
 \end{assumption}
 
 % keys
 As usual in the literature, we will denote the items managed by a priority queue as \emph{keys}.
-In the context of this work, an item is is a priority vector which is associated with a task.
+In the context of this work, an item is a priority vector which is associated with a task.
 We say that a key is deleted if it was returned by a \verb|pop| operation or its associated task was marked as taken or dead. 
 
+% analysis only for sequential case
+For the analysis, we will limit ourselves to the sequential case, i.e., we assume that no keys are spied or marked deleted by another thread. 
+
 % outline
-On overview of the structure of the MCPQ is depicted in Fig.\ \ref{fig:structure}. The concepts of log-structured merge-lists and partitioning are discussed in sections \ref{sec:mcpq:description:lsm} and \ref{sec:mcpq:description:partitioning}, respectively. 
+The concepts of log-structured merge-lists and partitioning are discussed in sections \ref{sec:mcpq:description:lsm} and \ref{sec:mcpq:description:partitioning}, respectively. 
 Section \ref{sec:mcpq:description:merging_blocks} shows how the logarithmic number of blocks is maintained.
 Operations \verb|peek| (Section \ref{sec:mcpq:description:peek}), \verb|take| (Section \ref{sec:mcpq:description:take}), \verb|push| (Section \ref{sec:mcpq:description:push}) and \verb|pop| (Section \ref{sec:mcpq:description:pop}) as well as \verb|spy| (Section \ref{sec:mcpq:description:spying}) are discussed as soon as all relevant concepts and structures have been introduced.
 
@@ -986,7 +989,7 @@ Removing a range of items from the Virtual Array requires $O(1)$ time (see Secti
 After partitioning a block, it uses $O(n)$ memory to store $n$ keys. 
 \end{lemma}
 \begin{proof}
-Since \textsc{Partition} moves all deleted keys to the section of deleted keys, this follows directly from the call of to \textsc{Remove} at the end of the \textsc{PartitionBlock} procedure.
+Since \textsc{Partition} moves all deleted keys to the section of deleted keys, this follows directly from the call of the Virtual Array's \textsc{Remove} operation at the end of the \textsc{PartitionBlock} procedure.
 \end{proof}
 
 \begin{figure}
@@ -1033,9 +1036,11 @@ Once the top partition falls below $s_p$, we can again scan for a non-dominated 
 In case no such key can be found in the whole block (i.e., after falling back to the last existing partition), the whole block is marked as deleted, implying that no more peek operations have to be executed on it.
 
 \begin{lemma}
-The \verb|peek| operation has amortized time complexity $O()$ \todo{what?}
+The \verb|peek| operation has amortized time complexity $O(\log n)$.
 \end{lemma}
 \begin{proof}
+The for-loop (lines 3-6) has constant complexity because, due to Ass.\ \ref{ass:partition_succeeds}, the size of the right partition $p_r$ is bounded by the constant $s_p$.
+
 
 \end{proof}
 
@@ -1646,9 +1651,9 @@ We note here that Pheet provides several more priority queue implementations (or
 However, the \verb|LSMLocalityTaskStorage| priority queue is the most suitable for a comparison with our MCPQ implementation since it too observes purely local ordering guarantees and is also based on log-structured merge-lists.
 
 \section{Performance evaluation} \label{sec:evaluation}
-
+We compare the performance of our MCPQ to Pheet'S LSM priority queue via the MSP algorithm.
 % Mars hardware
-For performance evaluation, we used a shared memory system nicknamed \emph{Mars}, an Intel Xeon based system with the properties listed in Table \ref{table:mars}.
+All experiments were run on a shared memory system nicknamed \emph{Mars}, an Intel Xeon based system with the properties listed in Table \ref{table:mars}.
 \begin{table*}
 \begin{center}
     \begin{tabular}{| l | l |}
