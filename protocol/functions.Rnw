@@ -9,18 +9,12 @@ scheduler="scheduler",
 nodes="#nodes",
 edges="#edges",
 paths="#paths",
-cpus="#cpus",
-total_time="time [s]",
+cpus="Number of threads",
+total_time="Execution time [s]",
 num_dead_tasks="#dead tasks",
 num_actual_tasks="#created tasks",
-comment="comment"
+variant="Scheduler variant"
 )
-
-# create a nice plot
-plot <- function(x, y, pch, legend, xlab, ylab, legendPos, log) {
-    matplot(x,y, pch=pch, type='b', xlab=xlab, ylab=ylab, log=log)
-    legend(legendPos, legend=legend, col=pch, pch=pch)
-}
 
 #read benchmark data from files
 readDataFrom <- function(...) {
@@ -44,12 +38,12 @@ plotBenchmark <- function(..., xAxis, yAxis, legendPos="topright", log="", aggFu
                         test = d$test, 
                         algorithm = d$algorithm, 
                         scheduler = d$scheduler, 
-                        comment = d$comment, 
+                        variant = d$variant, 
                         xAxis = d[[xAxis]]), 
                     aggFun)       
         
     # generate the plot
-    p <- ggplot(data=ad, aes(xAxis, x, color=comment, shape=comment)) + geom_line() + geom_point()
+    p <- ggplot(data=ad, aes(xAxis, x, color=variant, shape=variant)) + geom_line() + geom_point() + theme(legend.position="top", legend.direction="horizontal") + scale_fill_discrete("")
     # axis labels
     p <- p + xlab(desc[xAxis]) + ylab(desc[yAxis])
    
@@ -67,7 +61,7 @@ plotOverCpus <- function(..., yAxis, legendPos="topright", log="", from=1, to=80
                         test = d$test, 
                         algorithm = d$algorithm, 
                         scheduler = d$scheduler, 
-                        comment = d$comment, 
+                        variant = d$variant, 
                         xAxis = d[[xAxis]]), 
                     aggFun)       
     
@@ -75,7 +69,7 @@ plotOverCpus <- function(..., yAxis, legendPos="topright", log="", from=1, to=80
     fd <- subset(ad, ad$xAxis >= from & ad$xAxis <= to)
     
     # generate the plot
-    p <- ggplot(data=fd, aes(xAxis, x, color=comment, shape=comment)) + geom_line() + geom_point()
+    p <- ggplot(data=fd, aes(xAxis, x, color=variant, shape=variant)) + geom_line() + geom_point() + theme(legend.position="top", legend.direction="horizontal") +  scale_fill_discrete("")
     # axis labels
     p <- p + xlab(desc[xAxis]) + ylab(desc[yAxis])
    
