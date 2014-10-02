@@ -468,7 +468,10 @@ In the context of this work, an item is a priority vector which is associated wi
 We say that a key is deleted if it was returned by a \verb|pop| operation or its associated task was marked as taken or dead. 
 
 % analysis only for sequential case
-For the analysis, we will limit ourselves to the sequential case, i.e., we assume that no keys are spied or marked deleted by another thread. 
+For the analysis, we will limit ourselves to the sequential case, i.e., 
+\begin{assumption} \label{ass:sequential}
+We assume that no keys are spied or marked deleted by another thread.
+\end{assumption}
 
 % outline
 The concepts of log-structured merge-lists and partitioning are discussed in sections \ref{sec:mcpq:description:lsm} and \ref{sec:mcpq:description:partitioning}, respectively. 
@@ -953,7 +956,7 @@ The deleted keys are only touched once to move them to the section of deleted it
 
 
 \subsubsection*{Removing deleted keys}
-After partitioning the whole block, its level is reduced as far as possible and, in case the section containing deleted keys is large enough, part of them are removed from the LSML via the \verb|remove| operation of the Virtual Array (Algorithm \ref{algo:partition_block}).
+After partitioning the whole block, its level is reduced as far as possible (Algorithm \ref{algo:reducellvl}) and, in case the section containing deleted keys is large enough, part of them are removed from the LSML via the \verb|remove| operation of the Virtual Array.
 The level $l$ of a block $b$ can be reduced if
 \begin{itemize}
 \item $l > 0$ (the minimum level of a block is $0$), and 
@@ -962,12 +965,11 @@ The level $l$ of a block $b$ can be reduced if
 \end{itemize}
 
 \begin{algorithm}
-\caption{Pseudo-code for partitioning a block}
-\label{algo:partition_block}
+\caption{Pseudo-code for shrinking a block}
+\label{algo:reducellvl}
 \begin{algorithmic}[1]
-\Function{PartitionBlock}{Block $b$}
-\State \Call{Partition}{$b$, $0$, size of $b - 1$} \Comment{Step 1: Partition the block}
-\State $l \gets $ level of $b$ \Comment{Step 2: Reduce the level of the block as far as possible}
+\Function{Shrink}{Block $b$}
+\State $l \gets $ level of $b$ 
 \State $l_s \gets $ level of the successor of $b$
 \While{$l > 0$ and $l_s < l$ and $delete < s_p  2^{l-1}$}
 \State $l = l-1$
@@ -977,29 +979,19 @@ The level $l$ of a block $b$ can be reduced if
 \end{algorithmic}
 \end{algorithm}
 
-\begin{lemma}
-The time complexity of the \textsc{PartitionBlock} function (Algorithm \ref{algo:partition_block}) is dominated by the \textsc{Partition} function.
-\end{lemma}
+\begin{corollary}
+The \textsc{Shrink} operation has time complexity $O(\log n)$.
+\end{corollary}
 \begin{proof}
-The loop at lines 5-7 is executed at most $l$ times. Since $n = 2^{\log l}$ (by definition of a block), this is equivalent to $\log n$. 
-Removing a range of items from the Virtual Array requires $O(1)$ time (see Section \ref{sec:virtual_array}).
+The loop is executed at most $l$ times. Since $n = 2^{\log l}$ (by definition of a block), the number of executions is bounded by $O(\log n)$ times while removing a range of items from the Virtual Array requires $O(1)$ time (see Section \ref{sec:virtual_array}).
 \end{proof}
 
-\begin{lemma}
-After partitioning a block, it uses $O(n)$ memory to store $n$ keys. 
+\begin{lemma} \label{lemma:partitionandshrink}
+After partitioning and shrinking a block, it uses $O(n)$ memory to store $n$ keys. 
 \end{lemma}
 \begin{proof}
-Since \textsc{Partition} moves all deleted keys to the section of deleted keys, this follows directly from the call of the Virtual Array's \textsc{Remove} operation at the end of the \textsc{PartitionBlock} procedure.
+\textsc{Partition} moves all deleted keys to the section of deleted keys, and \textsc{Shrink} extends this section as far as possible. It follows directly from the call of the Virtual Array's \textsc{Remove} operation at the end of the \textsc{Shrink} procedure at most a constant number of keys are stored by the block in addition to the $n$ keys.
 \end{proof}
-
-\begin{figure}
-\begin{center}
-\begin{tikzpicture}
-\end{tikzpicture}
-\caption{Example of a partition run with deleted keys}
-\label{fig:partition_with_nonactive}
-\end{center}
-\end{figure}
 
 \subsubsection{Peek} \label{sec:mcpq:description:peek}
 \begin{algorithm}
@@ -1013,13 +1005,14 @@ Since \textsc{Partition} moves all deleted keys to the section of deleted keys, 
   \If{$k == null$ or $x \less k$} $k = x$
   \EndIf
 \EndFor
-\If{$k == null$} \Comment{No active task in the right partition}
-  \State Extend $p_{d}$ to include $p_r$ \Comment{Add all the tasks in $p_r$ to the non-active tasks section}
-  \If{$p_{l1} < p_{d}$}
+\If{$k == null$} \Comment{No non-deleted keys in the right partition}
+  \State Extend $p_{d}$ to include $p_r$ \Comment{$p_d$ now covers $p_r$}
+  \If{$p_{l1} < p_{d}$} \Comment{Check if some non-deleted keys exist in the block}
     \State Set $p_r \gets p_{li}$
     \State \Call{Partition}{$b$, $p_r$, $p_{d}$} \Comment{Further partition $p_r$}
-    \State $k \gets $ \Call{peek}{$b$}	\Comment{Call peek on the new right partition again}
+    \State \Call{Shrink}{$b$} \Comment{Shrink the block as far as possible}
   \EndIf
+  \State $k \gets $ \Call{peek}{$b$}	\Comment{Call peek again on the new right partition}
 \EndIf
 \State \Return{$k$}
 \EndFunction
@@ -1029,19 +1022,28 @@ Since \textsc{Partition} moves all deleted keys to the section of deleted keys, 
 Once a block is partitioned, the \verb|peek| operation (Algorithm \ref{algo:peek} is relatively easy:
 We simply need to scan all the non-deleted keys in the right partition. The first encountered key is kept as a candidate and compared to all remaining keys in the partition to ensure that it is not dominated by any of them; if it is, the dominating key is taken as the new candidate.
 % falling back
-In case no such key is found in the right partition, we simply fall back to the previous partition: since the right partition does not contain any key, it is merged with the section holding the deleted keys; the left partition with highest index is then taken as the new right partition.
+In case no such key is found in the right partition, we fall back to the previous partition: since the right partition does not contain any key, it is merged with the section holding the deleted keys; the left partition with highest index is then taken as the new right partition.
 This partition might have to be partitioned further, since its size is bounded from above only by $O(n)$ and thus may exceed the size $s_p$ that we aim for the right partition. 
 Once the top partition falls below $s_p$, we can again scan for a non-dominated key.
 % dead block
-In case no such key can be found in the whole block (i.e., after falling back to the last existing partition), the whole block is marked as deleted, implying that no more peek operations have to be executed on it.
+In case no such key can be found (i.e., after falling back to the last existing partition) the whole block is marked as deleted, implying that no more peek operations have to be executed on it.
+Note that when falling back to another partition, \verb|peek| shrinks the block to ensure that it uses $O(n)$ memory (see Lemma \ref{lemma:partitionandshrink}) but does not merge blocks in case the successor of block $b$ has the same level. 
+It will be shown in the following how the \verb|push| operation ensures the logarithmic number of blocks after using \verb|peek| on a block.
 
 \begin{lemma}
 The \verb|peek| operation has amortized time complexity $O(\log n)$.
 \end{lemma}
 \begin{proof}
-The for-loop (lines 3-6) has constant complexity because, due to Ass.\ \ref{ass:partition_succeeds}, the size of the right partition $p_r$ is bounded by the constant $s_p$.
+The for-loop (lines 3-6) has constant complexity because the size of the right partition $p_r$ is bounded by the constant $s_p$, due to Ass.\ \ref{ass:partition_succeeds}.
 
+We amortize the cost of the recursive calls to $\verb|peek|$ as well as to \textsc{Partition} over the number of keys in a block:
 
+All calls to \textsc{Partition} are made with non-overlapping ranges of keys and thus for $n$ \verb|peek| operations the whole block is partitioned only once, i.e., the partitioning operations caused by $n$ calls to \verb|peek| require $O(n\log n)$ time in total.
+
+A block is partitioned into at most $n$ partitions, implying that $n$ \verb|peek| operations cause at most $n$ fall backs. 
+\verb|peek| is called once for each fall back and thus $n$ \verb|peek| operations cause at most $n$ recursive calls in total.
+
+The complexity of \verb|peek| is dominated by \text{Partition} and thus has an amortized complexity of $O(\log n)$.
 \end{proof}
 
 \subsubsection{Take} \label{sec:mcpq:description:take}
@@ -1049,15 +1051,7 @@ While the \verb|peek| operation finds a Pareto-optimal key without removing it f
 Subsequent \verb|push| and \verb|pop| operations will eventually remove the deleted key from the priority queue.
 The \verb|take| operation thus trivially has complexity $O(1)$.
 
-
 \subsubsection{Merging blocks} \label{sec:mcpq:description:merging_blocks}
-% adding elements
-As outlined above, all items that are added to the MCPQ are first stored in a special block of level 0, called $b_a$. 
-Once this block is full, a new block of level 0 is created and all keys from the block $b_a$ are moved there.
-If another block of level 0 already exists, the two blocks are merged to create a block of level 1. 
-This merging operation is continued as long as there are two blocks of same level (note that due to the structure of the LSML, two blocks of same level are always neighbors).
-The block resulting from this merging operation has to be partitioned again to ensure that \verb|peek| can find a Pareto-optimal key in constant amortized time \todo{this has yet to be shown}.
-
 \begin{algorithm}
 \caption{Pseudo-code for merging several blocks}
 \label{algo:merge_from}
@@ -1065,25 +1059,28 @@ The block resulting from this merging operation has to be partitioned again to e
 \Function{MergeFrom}{Block $b$}
 \State let $b_p$ be the block preceding $b$
 \State $merged \gets false$
-\While{$b_p$ exists and is either a deleted block or of same level as $b$ }
-\State merge $b_p$ and $b$
+\While{$b_p$ exists and is either of same level as $b$ }
+\State combine $b_p$ and $b$
 \State $b \gets b_p$
 \State $b_p \gets$ predecessor of $b$
 \State $merged \gets true$
 \EndWhile
-\If{$merged$}
-\Call{Partition}{$b$}
-\EndIf
+\State \Return{$merged $}
 \EndFunction
 \end{algorithmic}
 \end{algorithm}
 
-\begin{lemma}
+As outlined above, all items that are added to the MCPQ are first stored in a special block of level 0, called $b_a$. 
+Once this block is full, a new block of level 0 is created and all keys from the block $b_a$ are moved there.
+If another block of level 0 already exists, the two blocks are merged to create a block of level 1. 
+This operation is continued as long as there are two blocks of same level, as shown in Algorithm \ref{algo:merge_from} (note that due to the structure of the LSML, two blocks of same level are always neighbors).
+Note that the resulting block $b$ will have to be partitioned before the next \verb|peek| operation. 
 
-\end{lemma}
-
+\begin{corollary}
+The \textsc{MergeFrom} operation has worst-case time complexity $O(\log n)$.
+\end{corollary}
 \begin{proof}
-
+Since there are $O(\log n)$ blocks in an LSML, the while loop (lines 4-9) requires at most $O(\log n)$ time (in case all the blocks are combined) and the resulting block is of size at most $n$ 
 \end{proof}
 
 \subsubsection{Push} \label{sec:mcpq:description:push}
@@ -1099,22 +1096,70 @@ In case the block $b_a$ is full, a new block of level 0 is created and all keys 
 \If{$b_a$ is full}
   \State Create a new block $b$ of level 0 at the end of the linked list
   \State Move all elements from $b_a$ to $b$
-  \State \Call{MergeFrom}{$b$}
+  \If{\Call{MergeFrom}{$b$}}
+    \State \Call{Partition}{$b$}
+  \EndIf
 \EndIf
 \State Insert $k$ in $b_\text{insert}$
 \EndFunction
 \end{algorithmic}
 \end{algorithm}
 
-\begin{lemma}
-The \verb|push| operation has amortized time complexity $O()$ \todo{well, what?}.
+
+\begin{table*}
+\begin{center}
+    \begin{tabular}{| r | c | c | c | c | c | c | c | c | c | c | c | c | c | c | c | c |}
+    \hline
+    $i$: &  1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 & 11 & 12 & 13 & 14 & 15 & 16\\
+    \hline
+    Processed keys:  & 0 & 2 & 0 & 4 & 0 & 2 & 0 & 8 & 0 & 2 & 0 & 4 & 0 & 2 & 0 & 16\\ 
+    \hline
+    \end{tabular}
+\end{center}
+\caption{Number of keys processed in a merge operation after inserting keys $i s_p$ keys.}
+\label{table:nrMerges}
+\end{table*}
+
+\begin{lemma} \label{lemma:push}
+The \verb|push| operation has amortized time complexity $O(\log^2 n)$.
 \end{lemma}
 \begin{proof}
+In case the block $b_a$ is not full, \verb|push| trivially requires $O(1)$ time. 
+Otherwise, creating a new block and moving all keys from block $b_a$ to the new block can be done in constant time (the number of keys in $b_a$ is equal to the constant $s_p$).
+It follows that \textsc{Partition} dominates the complexity of the operation. 
 
+We amortize its cost over $n$ \verb|push| operations: 
+The first time block $b_a$ is full, no merge is required since no other block exists. 
+The second time however the new block needs to be merged with the other block of level 0, prompting the partitioning of $2s_p$ keys.
+Once $4 s_p$ keys have been inserted, one additional merge of $4 s_p$ keys is required.
+However, no additional merge of $2 s_p$ keys is done. 
+This can be seen as follows: 
+Inserting $3 s_p $ keys creates one block of level 1 and one block of level 0. 
+After adding $s_p$ more keys, a new level 0 block is created and, since now two blocks of same level exist, \textsc{MergeFrom} will combine them to a level 1 block. 
+Now that two blocks of level 1 exists, they are combined into a level 2 block, which is then partitioned.
+Table \ref{table:nrMerges} list the number of keys processed in a merge and partition operation after a given number of keys have been added.
+
+One merge operation is required every $2 s_p$ keys, i.e., $n/2s_p$ merge operations are required for $n$ keys. 
+This is clearly less than one merge of $2 s_p$ keys every $2 s_p$ keys plus one merge of $4 s_p$ keys every $4 s_p$ keys and so on. 
+The number of keys processed by the partition operation after a merge operations is thus at most  $m = n \log n$ and pushing $n$ keys requires at most 
+$$
+m \log m = n \log n \log (n \log n) = n \log^2 n + n \log n \log \log n
+$$
+time, implying \verb|push| has amortized complexity $O(\log^2 n)$.
 \end{proof}
 
 
 \subsubsection{Pop} \label{sec:mcpq:description:pop}
+To find a non-dominated key, \verb|peek| is used to generate a set of $O(\log n)$ keys (one per block), where each key is Pareto-optimal w.r.t.\ the keys stored in the block it was obtained from. 
+Thus, this set needs to be scanned to ensure that a key that is not dominated by any other in the set is returned. \todo{We have a problem here: the ``not dominated'' relation is not transitive; thus, the key we eventually return might be dominated by one of the keys in another block}.
+In case the number of non-deleted keys in a block after a \verb|peek| operation drops below half the block's capacity, the block is shrunk. 
+To maintain the logarithmic number of blocks, a merge of $b$ with its predecessor (in case the block was shrunk to the same level as $b$ in the previous iteration of the while loop), or with its successor (in case $b$ got shrunk to the same level as its successor and the successor is not shrunk in the next iteration) might be required. 
+However, at most one of these situations 
+
+In case the predecessor of block $b$ was shrunk to 
+Block $b$ is merged with its predecessor $b_p$ in case $b_p$ was shrunk in the previous iteration of the while loop or with its successor $b_s$ in case $b$ gets shrunk to the same level of $b_s$. 
+Thus, at most one of those merge operations can occur.
+
 \begin{algorithm}
 \caption{Pseudo-code for the pop operation}
 \label{algo:pop}
@@ -1123,23 +1168,23 @@ The \verb|push| operation has amortized time complexity $O()$ \todo{well, what?}
 \Function{pop}{}
 \State Key $k_{best} \gets$ \Call{peek}{$b_a$}
 \State Block $b_{best} \gets b_a$
-\State Block $b \gets b_a $d
+\State Block $b \gets b_a $
 \While{$b.next$ exists}
   \State $b \gets b.next$
-  \If{$b$ is marked deleted}
-    \State continue
-  \EndIf
   \State Key $k \gets$ \Call{peek}{$b$}
-  \If{$k == null$}
-    \State mark $b$ as deleted block
-  \Else
+  \If{$k \neq null$}
     \If{$k_{best} == null$ or $k \less k_{best}$}
       \State $k_{best} \gets k$
       \State  $b_{best} \gets b$ 
     \EndIf
-    \State \Call{MergeFrom}{$b$}
+  \EndIf
+  \If{\Call{MergeFrom}{$b$}}
+    \State mark block $b$ for partitioning
   \EndIf
 \EndWhile
+\ForAll{blocks $x$ marked for partitioning}
+    \State \Call{Partition}{$x$}
+\EndFor
 \State \Return{$k$}
 \EndFunction
 \end{algorithmic}
@@ -1147,13 +1192,28 @@ The \verb|push| operation has amortized time complexity $O()$ \todo{well, what?}
 
 
 \begin{lemma}
-The \verb|pop| operation has amortized time complexity $O()$ \todo{well, what?}.
+The \verb|pop| operation has amortized time complexity $O(\log^2 n)$.
 \end{lemma}
 \begin{proof}
+The number of executions of the while loop is bounded by the number of blocks and is thus $O(\log n)$. 
+\verb|peek| and \textsc{MergeFrom} each require $O(\log n)$ time and thus the while loop has complexity $O(\log n)$.
 
+The cost of \textsc{Partition} can be amortized over $n$ \verb|pop| operations to $O(\log^2 n)$ with similar arguments as used for the analysis of the \verb|push| operation (Lemma \ref{lemma:push}).
 \end{proof}
 
+So far, for the analysis of \verb|push| (\verb|pop|) we assumed that a sequence of $n$ operations was not interrupted by any \verb|pop| (\verb|push|) operations. 
+Regarding general sequences of \verb|push| and \verb|pop|, we make the following claim (without proof): 
+\begin{conjecture}
+The amortized asymptotic complexity of $n$ \verb|push| (\verb|pop|) operations does not change if some keys are popped (pushed) in the meantime.
+\end{conjecture}
+
 \subsubsection{Spying} \label{sec:mcpq:description:spying}
+In case thread does not have any ready-tasks in its own local priority queue, it may \verb|spy| some from another thread. 
+A thread spies keys from another thread, called the victim, by copying them into its own priority queue.
+The key itself is not altered or deleted from the victims priority queue and it has to be ensured by appropriate synchronization mechanism that two \verb|pop| operations executed by different threads do not return the same key.
+This can be achieved with the help of an atomic flag, associated with each key: before \verb|pop| returns a key, it has to check that the flag is not set before setting the flag itself, all in one atomic operation. 
+This variable is called the \verb|taken| flag and taken keys are dealt with in the same way as deleted keys.
+
 \begin{algorithm}
 \caption{Pseudo-code for the spy operation}
 \label{algo:spy}
@@ -1170,11 +1230,13 @@ The \verb|pop| operation has amortized time complexity $O()$ \todo{well, what?}.
 \end{algorithmic}
 \end{algorithm}
 
-\begin{lemma}
-The \verb|spy| operation has amortized time complexity $O()$ \todo{well, what?}.
-\end{lemma}
-\begin{proof}
+A \verb|spy| operation is performed by scanned the keys of another thread's priority queue (via the Virtual Array) and adding each non-deleted key to the thread-local priority queue via \verb|push|.
 
+\begin{corollary}
+The \verb|spy| operation has complexity $O(n \log^2 n)$.
+\end{corollary}
+\begin{proof}
+This follows immediately from \verb|push| having complexity $O(\log^2 n)$.
 \end{proof}
 
 
@@ -1672,27 +1734,54 @@ All experiments were run on a shared memory system nicknamed \emph{Mars}, an Int
 \end{center}
 \end{table*}
 % compiler 
-For all experiments, Pheet was compiled using \verb|clang 3.4.2-7| with the the \verb|-O3| flag to allow standard compiler optimizations.
+Pheet was compiled using \verb|gcc 4.9.1| with the the \verb|-O3| flag to allow standard compiler optimizations.
+All experiments were repeated 20 times and the graphs show the mean values \todo{and confidence intervals?}.
 
 \subsection{Test instances} \label{sec:eval:test_instances}
 % test graphs
-All input instances were created by \verb|PHEET_HOME/test/msp/lib/Graph/Generator/main.h|, which generates a random connected digraph with the following arguments:
+Input instances were created by our own graph generator \footnote{\verb|PHEET_HOME/test/msp/lib/Graph/Generator/main.h|}, which generates a random connected digraph with the following arguments:
 \begin{compactitem}
 \item \verb|n|: Number of nodes.
-\item \verb|m|: Number of edges.
+\item \verb|m|: Number of arcs.
 \item \verb|d|: Degree of the weight vectors.
 \item \verb|w|: Upper limit for all dimensions of the weight vectors.
 \item \verb|r|: Random seed value.
 \end{compactitem}
 If the option \verb|-p| is given, a multigraph will be generated. 
 Otherwise, the generated graph will contain no parallel edges.
-\subsection{Methodology} \label{sec:eval:methodology}
-% number of runs
-% confidence intervals
+
+The generator first generates a random tree to ensure that the graph is connected and then inserts additional arcs. 
+These are selected randomly from the set of $n(n-1)$ arcs of a complete graph minus the $(n-1)$ arcs chosen for the tree. 
+
+\setkeys{Gin}{width=1\textwidth}
+\subsection{Results} \label{sec:results}
+\begin{figure}[H]
+\begin{center}
+<<fig=TRUE, echo=FALSE, width=9, height=4>>=
+plotOverCpus(
+"../benchmarks/mars/g_5000_30000_3_10000_42/s2pareto.dat",
+"../benchmarks/mars/g_5000_30000_3_10000_42/s2lsm.dat",
+yAxis="total_time", from=1, to=80)
+@
+\end{center}
+\caption{g\_5000\_30000\_3\_10000\_42}
+\end{figure}
 
 
+\begin{figure}[H]
+\begin{center}
+<<fig=TRUE, echo=FALSE, width=9, height=4>>=
+plotOverCpus(
+"../benchmarks/mars/g_1000_3000_5_10000_42/s2pareto.dat",
+"../benchmarks/mars/g_1000_3000_5_10000_42/s2lsm.dat",
+yAxis="total_time", from=1, to=80)
+@
+\end{center}
+\caption{g\_1000\_3000\_5\_10000\_42}
+\end{figure}
 
 
+\section{Future work} \label{sec:future}
 
 \section{Conclusion} \label{sec:conclusion}
 \todo{...}
@@ -1705,4 +1794,5 @@ Furthermore, I am especially grateful to all members of the ``Parallel Computing
 %bibliography
 \bibliographystyle{acm}
 \bibliography{sources} 
+
 \end{document}
