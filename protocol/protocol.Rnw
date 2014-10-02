@@ -588,7 +588,7 @@ Note that items in the range $]l, l'[$ and $]r', r[$ are not removed, i.e., afte
 It is the user's responsibility to always apply the operation with the largest possible range\footnote{I.e., removing the range $]l,r[$ cannot be done by using the \verb|remove| operation twice with the ranges $]l, k[$, $]k-1, r[$ for some $k$, $l<k<r$.} and including items that have not been removed although they were in the range of a previous \verb|remove| operation\footnote{Section \ref{sec:mcpq:description:partitioning} shows how this is done}.
 The \verb|delete| operation requires $O(1)$ time.
 
-\begin{lemma}
+\begin{lemma} \label{lemma:virutalArrayMemory}
 To store $n$ items, the Virtual Array allocates $O(n)$ memory.
 \end{lemma}
 \begin{proof}
@@ -712,7 +712,7 @@ Merging two blocks requires constant time.
 Since all operations are executed in-place on the Virtual Array, two blocks are merged by doubling the capacity (i.e., the range of keys maintained by the block) of the first and deleting the second block.
 \end{proof}
 
-\begin{lemma}
+\begin{lemma} \label{lemma:nrBlocks}
 An LSML requires at most $2 + \lfloor \log n \rfloor$ blocks to store $n$ keys.
 \end{lemma}
 \begin{proof}
@@ -729,29 +729,6 @@ For $c>1$, the number of blocks does not increase since the capacity of each is 
 
 Note that the size of each block is $O(n)$.
 So far we have not discussed how a block actually manages the keys it contains (this will be done in Section \ref{sec:mcpq:description:partitioning}). 
-We will make the following assumption to be able to provide a preliminary analysis of the LSML:
-\begin{assumption}
-To manage $n$ keys, a block used $O(n)$ space and the \textit{push}, \textit{peek} and \textit{take} operations on a \emph{single block} can be done in constant time. \todo{maybe just do the partitioning part first?}
-\end{assumption}
-
-\begin{corollary}
-An LSML uses $O(n)$ space to store $n$ keys.
-\end{corollary}
-\begin{proof}
-This follows directly from the previous lemma.
-\end{proof}
-
-\begin{lemma}
-The \textit{push} operation requires $O(\log n)$ amortized time.
-\end{lemma}
-\begin{proof}
-\end{proof}
-
-\begin{lemma}
-The \textit{pop} operation requires $O(\log n)$ amortized time.
-\end{lemma}
-\begin{proof}
-\end{proof}
 
 
 \subsubsection{LSML-Blocks} \label{sec:mcpq:description:partitioning}
@@ -1204,7 +1181,7 @@ The cost of \textsc{Partition} can be amortized over $n$ \verb|pop| operations t
 So far, for the analysis of \verb|push| (\verb|pop|) we assumed that a sequence of $n$ operations was not interrupted by any \verb|pop| (\verb|push|) operations. 
 Regarding general sequences of \verb|push| and \verb|pop|, we make the following claim (without proof): 
 \begin{conjecture}
-The amortized asymptotic complexity of $n$ \verb|push| (\verb|pop|) operations does not change if some keys are popped (pushed) in the meantime.
+% The amortized asymptotic complexity of $n$ \verb|push| (\verb|pop|) operations does not change if some keys are popped (pushed) in the meantime.
 \end{conjecture}
 
 \subsubsection{Spying} \label{sec:mcpq:description:spying}
@@ -1237,6 +1214,14 @@ The \verb|spy| operation has complexity $O(n \log^2 n)$.
 \end{corollary}
 \begin{proof}
 This follows immediately from \verb|push| having complexity $O(\log^2 n)$.
+\end{proof}
+
+\subsubsection{Memory usage} \label{sec:mcpq:description:memory}
+\begin{corollary}
+After a \verb|pop| operation, an LSML uses $O(n)$ space to store $n$ keys.
+\end{corollary}
+\begin{proof}
+This follows directly from lemmas  \ref{lemma:virutalArrayMemory}, \ref{lemma:nrBlocks} and \ref{lemma:partitionandshrink}.
 \end{proof}
 
 
@@ -1735,9 +1720,9 @@ All experiments were run on a shared memory system nicknamed \emph{Mars}, an Int
 \end{table*}
 % compiler 
 Pheet was compiled using \verb|gcc 4.9.1| with the the \verb|-O3| flag to allow standard compiler optimizations.
-All experiments were repeated 20 times and the graphs show the mean values \todo{and confidence intervals?}.
+All experiments were repeated 20 times and the graphs show the mean values.
 
-\subsection{Test instances} \label{sec:eval:test_instances}
+\subsubsection*{Test instances} \label{sec:eval:test_instances}
 % test graphs
 Input instances were created by our own graph generator \footnote{\verb|PHEET_HOME/test/msp/lib/Graph/Generator/main.h|}, which generates a random connected digraph with the following arguments:
 \begin{compactitem}
@@ -1755,6 +1740,10 @@ These are selected randomly from the set of $n(n-1)$ arcs of a complete graph mi
 
 \setkeys{Gin}{width=1\textwidth}
 \subsection{Results} \label{sec:results}
+We compare the execution time of the Pheet-based MSP algorithm with the two scheduler variants described in Section \ref{sec:msp_algo:implementation}.
+Fig.\ \ref{fig:plot1} and Fig.\ \ref{fig:plot2} indicate that the problem scales scales reasonably for up to 80 processors when using our MCPQ and it is slower than the LSM variant by roughly a factor of two.
+However, the  LSM variant uses a total ordering relation (e.g., the $L^1$ norm) for ordering tasks, which is not applicable to priority vectors of a more general form, while the MCPQ does not rely on such an ordering and we claim that it can be worthwhile trade-off.
+
 \begin{figure}[H]
 \begin{center}
 <<fig=TRUE, echo=FALSE, width=9, height=4>>=
@@ -1764,7 +1753,8 @@ plotOverCpus(
 yAxis="total_time", from=1, to=80)
 @
 \end{center}
-\caption{g\_5000\_30000\_3\_10000\_42}
+\caption{Execution time of MSP on a graph with 5000 nodes, 30000 edges and 3 objectives.}
+\label{fig:plot1}
 \end{figure}
 
 
@@ -1777,11 +1767,10 @@ plotOverCpus(
 yAxis="total_time", from=1, to=80)
 @
 \end{center}
-\caption{g\_1000\_3000\_5\_10000\_42}
+\caption{Execution time of MSP on a graph with 1000 nodes, 3000 edges and 5 objectives.}
+\label{fig:plot2}
 \end{figure}
 
-
-\section{Future work} \label{sec:future}
 
 \section{Conclusion} \label{sec:conclusion}
 \todo{...}
