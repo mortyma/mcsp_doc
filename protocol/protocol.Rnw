@@ -60,12 +60,11 @@
 % vectors
 \newcommand{\vect}[1]{\vec{#1}}
 
-% dominance relation
-\newcommand{\dom}{\ensuremath{\prec}}
 % less relation
 \newcommand{\less}{\ensuremath{\prec}}
 \newcommand{\lesseq}{\ensuremath{\preceq}}
 \newcommand{\moreeq}{\ensuremath{\succeq}}
+\newcommand{\more}{\ensuremath{\succ}}
 
 % total order relation
 \newcommand{\tor}{\ensuremath{\leq_R}}
@@ -79,6 +78,26 @@
 
 % concatenation of paths
 \newcommand{\cP}[2]{\ensuremath{#1;#2}}
+
+% column vectors
+\makeatletter
+\newcommand{\Spvek}[2][r]{%
+  \gdef\@VORNE{1}
+  \left(\hskip-\arraycolsep%
+    \begin{array}{#1}\vekSp@lten{#2}\end{array}%
+  \hskip-\arraycolsep\right)}
+
+\def\vekSp@lten#1{\xvekSp@lten#1;vekL@stLine;}
+\def\vekL@stLine{vekL@stLine}
+\def\xvekSp@lten#1;{\def\temp{#1}%
+  \ifx\temp\vekL@stLine
+  \else
+    \ifnum\@VORNE=1\gdef\@VORNE{0}
+    \else\@arraycr\fi%
+    #1%
+    \expandafter\xvekSp@lten
+  \fi}
+\makeatother
 
 % style of listings
 \definecolor{Gray}{gray}{0.5}
@@ -107,11 +126,11 @@
       #1
   }
   }
-   %\lstset{basicstyle=\ttfamily\footnotesize,frame=single,#1}}
 {\endminipage}
 
-%\DeclareCaptionFormat{mylst}{\hrule#1#2#3}
-%\captionsetup[code]{format=mylst,labelfont=bf,singlelinecheck=off,labelsep=space}
+% \texttt in function names
+\algrenewcommand\textproc{\texttt}
+
 
 % 
 \title{A multi-criteria priority queue for the Pheet task scheduling framework\\
@@ -136,7 +155,26 @@ Vienna University of Technology}
 %\pagebreak	
 
 \begin{abstract}
-\cite{Wimmer14} \todo{abstract}
+\noindent
+% data structure
+A priority queue is an abstract data structure that stores a set of keys. 
+% efficient access
+It is a crucial component for numerous applications which require efficient access to the item with the minimal (or highest-priority) key, e.g., 
+\begin{inparaenum}
+\item the classical single-source shortest path algorithm by Dijkstra or 
+\item schedulers for multi-processor systems.
+\end{inparaenum}
+% scalar values
+Typically, those keys are scalar values and inserting a key (the \texttt{push} operation) as well as finding and deleting the minimal key (\texttt{pop}) can be done in sub-linear time.
+
+% whats new
+We present a new priority queue, called the \emph{Pareto priority queue (PPQ)}, which manages keys of a more general form. In particular, keys are vectors from some domain $V$ and both the \texttt{push} and \texttt{pop} operation have amortized time complexity $O(\log^2 n)$. 
+
+% tie in with pheet
+We use the PPQ to provide Pheet, a task scheduling framework for shared memory systems, with the means to schedule tasks with multi-dimensional priorities. 
+We provide an example implementation of the multi-criteria shortest path problem based on Pheet to evaluate the PPQ's performance compared to existing task schedulers. 
+
+
 \end{abstract}
 
 \pagebreak
@@ -150,44 +188,46 @@ Vienna University of Technology}
 Pheet\footnote{\url{www.pheet.org}} is an open-source task scheduling framework for shared memory systems   
 and is based on the task-parallel programming model, which allows a programmer to explicitly expose the parallelism of an application.
 % The build-up for task priorities
-Runtime systems based on the task-parallel model typically impose a non-adaptive, application independent execution order on the tasks where the scheduler is unaware of the preferred execution order of the tasks (The tasks are processed in, e.g., LIFO-order).
+Runtime systems based on the task-parallel model typically impose a non-adaptive, application independent execution order on the tasks where the scheduler is unaware of the preferred execution order (the tasks are processed in, e.g., LIFO-order).
 % The problem with Dijkstra's algorithm
-While it has proven to be an efficient strategy for parallelization \cite{AroraBP01}, this approach has not been particularly useful for the parallelization of algorithms relying on priority queues (such as Dijkstra's famous algorithm for the single-source shortest path problem (SSSP) \cite{Dijkstra59}), since two work pools have to be maintained: 
-One is used by the scheduling framework to maintain tasks that are yet to be executed; the other is required by the algorithm itself to determine the execution order of the tasks.
+While it has proven to be an efficient strategy for parallelization \cite{AroraBP01}, this approach has not been particularly useful for the parallelization of algorithms relying on priority queues such as Dijkstra's famous algorithm for the single-source shortest path problem (SSSP) \cite{Dijkstra59}, since two work pools have to be maintained: 
+One is used by the scheduling framework to keep track of the tasks that are yet to be executed; the other is required by the algorithm itself to determine the execution order of the tasks.
 
 % Priority task scheduling
-\emph{Priority task scheduling}, introduced by Wimmer et al.~\cite{WVTCT13}, addresses this problem by making the preferred execution order of tasks known to the scheduler. 
-To achieve this, the task scheduler utilizes a concurrent priority queue which fulfills the ordering requirements imposed by the algorithm by assigning comparison-based priority values to the tasks.
-Wimmer \cite{Wimmer14} further states that a scheduler based on the task priority scheduling model allows for an efficient parallel implementation of any algorithm relying on priority queues is possible.
-They back up their claim by providing a parallel implementation of Dijkstra's algorithm on top of Pheet, which utilizes a scheduler based on the priority task scheduling model.
+\emph{Priority task scheduling} (Wimmer et al.~\cite{WVTCT13}), addresses this problem by making the preferred execution order of tasks known to the scheduler. 
+The task scheduler utilizes a concurrent priority queue which fulfills the ordering requirements imposed by the algorithm by assigning a comparison-based priority value to each tasks.
+Wimmer \cite{Wimmer14} further states that a scheduler based on the task priority scheduling model allows for an efficient parallel implementation of any algorithm relying on priority queues.
+Their claim is backed up a parallel implementation of Dijkstra's algorithm with the help of a scheduler based on the priority task scheduling model.
 
 % Pareto priorities
-In their dissertation \cite{Wimmer14}, they suggest to generalize the idea of priority task scheduling to multi-dimensional (or \emph{Pareto-}) priorities (as defined in Section \ref{sec:pareto_optima}), which requires an efficient Pareto-priority queue implementation to be added to Pheet. 
-A Pareto-priority queue ensures that the next task to be executed is a Pareto optimum, i.e., a task for which the partial solution is not dominated by the partial solution of any other task.
-Such a Pareto-priority queue would allow for an efficient parallel implementation of e.g., algorithms solving the multi-criteria shortest path problem (MSP)\footnote{Sometimes also called multi-objective shortest path problem, multi-objective optimization or multi-objective search.} as discussed in \cite{Martins84}.
-They outline a different advantage of using multi-dimensional priorities for task scheduling, which is independent of the algorithm that utilizes the scheduler:
-Multi-dimensional priorities establish only a partial ordering on the tasks, which gives the scheduler more flexibility in terms of which task to execute next. 
+They suggest to generalize the idea of priority task scheduling to multi-dimensional (or \emph{Pareto-}) priorities (as defined in Section \ref{sec:pareto_optima}), which requires an efficient Pareto priority queue (PPQ) implementation to be added to Pheet. 
+A PPQ ensures that the next task to be executed is a Pareto optimum, i.e., a task for which the partial solution is not dominated by the partial solution of any other task.
+It allows for an efficient parallel implementation of e.g., algorithms solving the multi-criteria shortest path problem (MSP)\footnote{Also called  multi-objective shortest path problem, multi-objective optimization or multi-objective search.} as discussed in \cite{Martins84}.
+A different advantage of using multi-dimensional priorities for task scheduling, which is independent of the algorithm that utilizes the scheduler, is that multi-dimensional priorities establish only a partial ordering on the tasks, which gives the scheduler more flexibility in terms of which task to execute next. 
 
 % Our work
-In this work, we investigate a potential implementation of such a multi-dimensional priority queue for the Pheet task scheduling framework, which is then used in turn for a parallel algorithm solving the MSP. 
+In this work, we investigate a potential implementation of such a PPQ for the Pheet task scheduling framework, which is then used in turn for a parallel algorithm solving the MSP. 
 % MSP is not our focus
-\footnote{We note here that the goal of our work is not to provide a better algorithm for the MSP; we investigate the potential of a multi-dimensional priority queue and use the MSP only as an example application.}
+\begin{comment}
+\footnote{We note here that the goal of our work is not to provide a better algorithm for the MSP; we investigate the potential of a PPQ and use the MSP only as an example application and as a benchmark.}
+\end{comment}
 % first step: use linear combination
-As a first step and to provide a reference point, we will solve the MSP via the SSSP problem by reducing the multi-dimensional priorities to a scalar value via the $L^1$ norm.
-By doing so, the problem can be solved with Dijkstra's algorithm using one of Pheet's priority queue implementations. 
-% total ordering not always possible
-However, due to the general nature of a task's priority (defined in Section \ref{sec:pareto_optima}), to determine the highest-priority task the MCPQ cannot rely on a total ordering relation like the $L^1$ norm and has to make use of different techniques.
+An intuitive solution for the MSP is to apply the $L^1$ to reduce the multi-dimensional priorities to scalar values, i.e., by defining a total ordering on the priority vector's domain.   
+However, due to the general nature of a task's priority, such a total order relation does not necessarily exist, and the PPQ has to make use of different techniques to determine a highest-priority task.
 
-\todo{something about results?}
+%performance eval
+For performance evaluation, we provide a Pheet-based algorithm solving the MSP, which, due to Pheet's highly generic nature, may employ different priority queues to schedule tasks.
+One of them is our PPQ which directly considers the multi-dimensional priorities of the tasks, while the other is Pheet's LSM priority queue, which relies on the $L^1$ norm to schedule tasks.
+
+% Results
+A comparison of the performance of the MSP algorithm using the PPQ and LSM priority queues shows that they scale equally well; however, the PPQ variant is slower by roughly a factor of 2 when using integer priority vectors, which can be considered a reasonable trade-off for being able to schedule tasks with general multi-dimensional priorities. 
 
 \subsubsection*{Outline} \label{sec:intro:outline}
-We start with discussing related work in Section \ref{sec:related}, followed by a formal definition of Pareto-optimality (Section \ref{sec:pareto_optima}),and a high-level introduction of Pheet-related concepts that are relevant for this work (Section \ref{sec:pheet}).
-A detailed presentation and analysis of our multi-criteria priority queue is given in Section \ref{sec:mcpq}).
-We give a formal definition of the multi-criteria shortest path problem, which is used as an example application, in Section \ref{sec:shortest_path}, where we also discuss the hardness of the problem.
+We start with discussing related work in Section \ref{sec:related}, followed by a formal definition of Pareto-optimality (Section \ref{sec:pareto_optima}), and a high-level introduction of Pheet-related concepts that are relevant for this work (Section \ref{sec:pheet}).
+A detailed presentation and analysis of our PPQ is given in Section \ref{sec:ppq}).
+We give a formal definition of the MSP, which is used as an example application, in Section \ref{sec:shortest_path}, where we also discuss the hardness of the problem.
 A detailed description of a Pheet-based algorithm solving the MSP will be given in Section \ref{sec:msp_algo}. 
-This implementation is then used to compare the performance of our multi-criteria priority queue to other priority queue implementations already available in Pheet (Section \ref{sec:evaluation}).
-
-\todo{Future work, conclusion,...}
+This implementation is then used to compare the performance of our PPQ to another priority queue implementation already available in Pheet (Section \ref{sec:evaluation}).
 
 \section{Related work} \label{sec:related}
 %--------------------------------------------------------------------------------------------
@@ -196,11 +236,11 @@ This implementation is then used to compare the performance of our multi-criteri
 %   	- End, if it can be summarized quickly early on (in the Introduction or Preliminaries), or if sufficient comparisons require the technical content of the paper. In this case Related Work should appear just before the Conclusions, possibly in a more general section "Discussion and Related Work".
 %--------------------------------------------------------------------------------------------
 
+% pareto optima computation
+Computing teh maxima of a set of vectors (as discussed in \cite{KungLP75}) is a well understood problem that can be solved in linear expected time \cite{BentleyCL93}. 
+
 % Ehrgott, Gandibleux: 
-For an overview of related work for the MCSP without parallelization, we refer to the annotated bibliography of multiobjective combinatorial optimization \cite{EhrgottG02}, specifically Section ``6.1 Shortest path problems''.
-
-% Bi-criteria
-
+For an overview of related work for the MSP without parallelization, we refer to the annotated bibliography of multi-objective combinatorial optimization \cite{EhrgottG02}, specifically Section ``6.1 Shortest path problems''.
 % Sonnier: approximate solutions for d \in {3,4}
 Sonnier \cite{Sonnier06} were one of the first to publish parallel algorithms for solving MSP problems with 3 or 4 objectives. 
 Their algorithms are based on a weighted sum approach and thus provide only an approximate solution, i.e., the solution set may not contain all Pareto-optimal paths.
@@ -210,15 +250,17 @@ To the best of our knowledge, Sanders and Mandow \cite{SM13} published the first
 Their approach extends Dijkstra's classical algorithm \cite{Dijkstra59} and relies on a so called \emph{Pareto queue}, a multi-dimensional generalization of a priority queue. 
 While they give a high level description of the algorithm for arbitrary $d \geq 2$ and a detailed description of the bi-criteria case (which was further engineered by Erb \cite{Erb13}), they also state that efficient priority queues for $d\geq3$ are not yet known.
 
+%task based priority scheduling, Wimmer
+Wimmer et al.\ \cite{WVTCT13, WimmerKLSM} present several different priority queues for task-based priority scheduling and our work is based in parts on their $k$-LSM priority queue and dissertation \cite{Wimmer14}.
+
+
 \section{Pareto optima} \label{sec:pareto_optima}
 % Informally describe the problem
 Given a set of vectors, the \emph{maximal vector problem} is to find the subset of vectors s.t.\ each vector of the subset is not dominated by any vector of the set. 
-One vector dominates another if each of its components is equal to or smaller than (w.r.t.\ some partial ordering of the vectors) the corresponding component of the other vector, and strictly smaller in at least one component.
+One vector dominates another if each of its components is equal to or smaller than (w.r.t.\ some total order on the respective domain) the corresponding component of the other vector, and strictly smaller in at least one component.
 Such a maximal element is called \emph{Pareto-optimal} and the set of maxima is called the \emph{Pareto-set}. 
-
 % Example
-Figure \ref{fig:pareto_optima} illustrates the concept of Pareto-optimality. 
-A formal definition is provided in the following.
+Fig.\ \ref{fig:pareto_optima} illustrates the concept of Pareto-optimality and a formal definition is provided in the remainder of this section.
 
 \begin{figure}
 \begin{center}
@@ -297,19 +339,24 @@ For any $\vect{v} \in V$, we donate the $i$-th component of $\vect{v}$ by $w_i(\
 
 % Domination relation
 Let $\vect{x}, \vect{y} \in V$. 
-We say that $\vect{x}$ \emph{dominates} $\vect{y}$ ($\vect{x} \dom \vect{y}$) -- or equivalently, $\vect{y}$ \emph{is dominated by} $\vect{x}$ -- if and only if
+We say that $\vect{x}$ \emph{dominates} $\vect{y}$ ($\vect{x} \less \vect{y}$) -- or equivalently, $\vect{y}$ \emph{is dominated by} $\vect{x}$ -- if and only if
 \begin{align}
 &\forall i \in \{1,\dots, d\}: w_i(x) \lesseq_i w_i(y) \quad \text{and}\\
-&\exists j \in \{1,\dots, d\}: w_j(x) \less_i w_j(y) \quad .
+&\exists j \in \{1,\dots, d\}: w_j(x) \less_j w_j(y) \quad .
 \end{align}
-Note that $\vect{x} \dom \vect{y} $ implies $\vect{x} \neq \vect{y}$ and that the binary relation $\moreeq_i$ can easily be defined by the other two relations.
-For $d\geq 2$, the dominance relation ($\dom$) defines a partial order on $V$, but not a total order.
-Thus, there exist vectors $\vect{x}, \vect{y} \in V$, $\vect{x} \neq \vect{y}$ for which neither $\vect{x} \dom \vect{y}$ nor $\vect{y} \dom \vect{x}$ holds.
+Note that $\vect{x} \less \vect{y} $ implies $\vect{x} \neq \vect{y}$ and that the binary relation $\moreeq_i$ can easily be defined via the other two relations.
+For $d\geq 2$, the dominance relation ($\less$) defines a partial order on $V$, but not a total order.
+Thus, there exist vectors $\vect{x}, \vect{y} \in V$, $\vect{x} \neq \vect{y}$ for which neither $\vect{x} \less \vect{y}$ nor $\vect{y} \less \vect{x}$ holds.
+% transitivity
+The $\less$ relation is transitive, while $\not \less$ is not.
+To see this, let $\vect{x} = \Spvek{1;2}$, $\vect{y} = \Spvek{4;1}$ and $\vect{z} = \Spvek{3;3}$ and let $\less_i$ and $=_i$ be the usual $<$ and $=$ relations on $\mathbb{N}$.
+Note that $\vect{x} \not \less \vect{y}$ and $\vect{y} \not \less \vect{z}$, but $\vect{x} \less \vect{z}$.
 
 % Pareto optima
+\bigskip
 A vector $\vect{x} \in V$ is a \emph{Pareto-optimum} if and only if
 \begin{align}
-\nexists \vect{v} \in V: \vect{v} \dom \vect{x} \quad ,
+\nexists \vect{v} \in V: \vect{v} \less \vect{x} \quad ,
 \end{align}
 i.e., there is no vector $\vect{v}$ that dominates $\vect{x}$.
 %Pareto set
@@ -339,10 +386,8 @@ Furthermore, a place allows to implement processor-local data structures, e.g., 
 Pheet is based on the \emph{task-parallel model}, where a task is a small portion of work that is to be executed sequentially.
 As soon as a processor is ready to execute work, it retrieves a task from the \emph{work pool}, which contains all the tasks that have yet to be executed.
 A task may itself create additional tasks that are then stored in the work pool.
-
 A famous algorithm based on the work pool pattern is Dijkstra's algorithm \cite{Dijkstra59} for the shortest path problem:
 The algorithm requires a priority queue (that may be implemented as e.g., a simple binary search tree or a Fibonacci heap). This priority queue is a specialized work pool.
-
 Note that in a task parallel program, the work pool is not necessarily a centralized data structure; each place may maintain its own. 
 
 \subsubsection*{Task priorities and strategy scheduling}  \label{sec:pheet:task_priorites}
@@ -350,7 +395,6 @@ Note that in a task parallel program, the work pool is not necessarily a central
 The work pool exposes available work to the \emph{scheduler}, which is responsible for devising a schedule, i.e., a mapping of tasks to the processors.
 % Global scheduling strategy
 In standard task-parallel programming models, the scheduler typically employs a global policy that treats all tasks equally and thus independently of any task-specific properties.
-
 % Task priorities 
 Wimmer introduced the concept of \emph{task priorities} to make the scheduler aware of the preferred (relative) execution order of tasks. 
 % Discrete priorities
@@ -369,90 +413,97 @@ Pheet handles dead tasks lazily, i.e., a dead task will not be dropped immediate
 
 
 % Main part of the work
-\section{Multi-criteria priority queue} \label{sec:mcpq}
-% What is the MCPQ
-The goal of the MCPQ is to provide a concurrent priority queue that can then be used by Pheet's strategy scheduler  to determine the execution order of tasks with multi-dimensional priorities of the form described in Section \ref{sec:pareto_optima}.
-
+\section{A Pareto priority queue (PPQ)} \label{sec:ppq}
+% What is the PPQ
+The goal of the PPQ is to provide a concurrent priority queue that can be used by Pheet's strategy scheduler to determine the execution order of tasks with multi-dimensional priorities of the form described in Section \ref{sec:pareto_optima}.
 
 % Priorities and partial solutions
 The priority of a task reflects the potential quality of the (partial) solutions it will produce upon execution.
-By using multi-dimensional priority vectors, the quality of a solution may be measured by several, possibly conflicting metrics\footnote{We refer to our algorithm for the multi-criteria shortest path problem (definition see Section \ref{sec:shortest_path:defs:msp}; algorithm see Section \ref{sec:msp_algo}) for a concrete application of this concept.}. 
+By using multi-dimensional priority vectors, the quality of a solution may be measured by several, possibly conflicting metrics\footnote{We refer to our algorithm for the MSP (definition see Section \ref{sec:shortest_path:defs:msp}; algorithm see Section \ref{sec:msp_algo}) for a concrete application of this concept.}. 
 % Priority of task == desirability of execution
 Obviously, it is desirable to execute the tasks that will produce (partial) solutions with the highest potential quality (i.e., tasks with highest priority) before other tasks.
 % Pareto
-Since each task is associated with a multi-dimensional priority vector, the tasks with highest priorities are the ones with a Pareto-optimal priority vector (w.r.t.\ the set of priority vectors of tasks \emph{currently} managed by the queue).
+Since each task is associated with a multi-dimensional priority vector, the tasks with highest priorities are the ones with a Pareto-optimal priority vector w.r.t.\ the set of priority vectors of tasks \emph{currently} managed by the queue.
+
 
 % abstract definition
-The MCPQ is an \emph{ordered container} (as defined by Wimmer \cite{Wimmer14}), i.e., a bag-like data structure which orders tasks by their priorities.
-It offers the following operations:
+The PPQ is an \emph{ordered container} (as defined by Wimmer \cite{Wimmer14}), i.e., a bag-like data structure which orders tasks by their priorities.
+% keys
+As usual in the literature, we will denote the items managed by a priority queue as \emph{keys}.
+In the context of this work, a key is a priority vector associated with a task and a \emph{maximal} key is one with Pareto-optimal priority.
+The PPQ offers the following operations:
 \begin{itemize}
-\item \verb|push| adds a task to the container.
-\item \verb|pop| returns a task that was previously added and removes it from the container. The order in which tasks are returned is determined by their priority.
+\item \texttt{push} adds a key to the container.
+\item \texttt{pop} returns a key that was previously added and removes it from the container. The order in which keys are returned is determined by their priority.
 \end{itemize}
+The order of keys is defined by the application and \emph{not by the priority queue} itself.
+Given two keys $k_1$, $k_2$ from some domain $V$, we use the following relation symbols to state their order w.r.t.\ each other:
+\begin{itemize}
+\item $k_1 \less_i k_2$: The priority of $k_1$ in dimension $i$ is higher\footnote{We use the $\less$ symbol here to indicate that $k_1$ is ordered before $k_2$} than that of $k_2$ .
+\item $k_1 \more_i k_2$:  The priority of $k_1$ in dimension $i$ is less than that of $k_2$.
+\item $k_1 \lesseq_i k_2$: The priority of $k_1$ in dimension $i$ is higher than or equal to that of $k_2$.
+\item $k_1 \moreeq_i k_2$: The priority of $k_1$ in dimension $i$ is less than or equal to that of $k_2$.
+\item $k_1 \less k_2$: $k_1$ dominates $k_2$.
+\item $k_1 \not \less k_2$: $k_1$ does not dominate $k_2$.
+\end{itemize}
+For the MSP, partial solution consists of a path $p = \langle s,\dots,n \rangle$ form start node $s$ to node $n$ and the sum of the weight vectors of all arcs on this path, called the \emph{weight} of the path or solution.
+Usually, partial solutions with minimal weight are to be expanded first, i.e., they have the highest priority.
 
+% why we can't use algorithms of e.g. BentleyCL93
+A trivial solution of the problem is to compute the whole set of Pareto-optimal keys for every \texttt{pop} operation, which can be done in linear expected-time \cite{BentleyCL93}  and implies constant insertion time (i.e., \texttt{pop}) and linear expected-time for adding a key (i.e., \texttt{push}). 
+However, \texttt{push} is required to compute but one Pareto-optimum and for efficient priority queues one usually aims to have sub-linear time complexity for both operations.
+The PPQ thus employs different mechanisms, which are discussed in this work in detail.
 
-
-% Outline
-\begin{comment}
-We start with a high-level discussion of the MCPQ, in particular of the requirements and major design choices (Section \ref{sec:mcpq:definition}).
-Section \ref{sec:mcpq:description} provides a detailed description and analysis of the data structure, followed by a presentation of its implementation and integration into Pheet in Section \ref{sec:mcpq:pheet_integration}.
-
-\subsection{Definition and requirements} \label{sec:mcpq:definition}
-% Abstract datastructure description
-\end{comment}
-
-\subsubsection*{Ordering requirements} \label{sec:mcpq:ordering}
+\subsubsection*{Ordering requirements} \label{sec:ppq:ordering}
 % ordering semantics  
-The semantic definition of the \verb|pop| operation requires that \emph{all} threads agree on the set of tasks with Pareto-optimal priority, implying that all the \verb|push| and \verb|pop| operations executed by different threads need to appear to take affect in the same order for each thread, i.e., they need to be linearizable w.r.t.\ all the threads.
+The semantic definition of the \texttt{pop} operation requires that \emph{all} threads agree on the set of Pareto-optimal keys, implying that all \texttt{push} and \texttt{pop} operations executed by different threads need to appear to take affect in the same order for each thread, i.e., they need to be linearized w.r.t.\ all the threads.
 While these \emph{global ordering} semantics match the intuitive expectation, they also pose a (potentially big) performance bottleneck. 
 \emph{Local ordering} semantics typically occur when each thread maintains its own, thread-local priority queue.
-A task returned by \verb|pop| is required to have a Pareto-optimal priority only w.r.t.\ the tasks managed by the thread executing the operation; the priority queue of another thread might contain a task with strictly higher priority.
+A key returned by \texttt{pop} is required to be Pareto-optimal only w.r.t.\ the keys managed by the thread executing the operation; the priority queue of another thread might contain a strictly higher priority key.
 % pro and cons			
-With local ordering semantics, a thread might execute unnecessary additional work (since the solutions created by the task will be of much lower quality than the ones created by a task with a dominating priority vector and thus will eventually be abandoned). 
+With local ordering semantics, a thread might execute unnecessary additional work (since the solutions created by the task associated with the key will be of much lower quality than the ones created by a task with a dominating priority vector and thus will eventually be abandoned). 
 However, this negative effect is countered by increased parallelism and less overhead due to synchronization.
 
-\subsubsection*{Spying} \label{sec:mcpq:spying}
+\subsubsection*{Spying} \label{sec:ppq:spying}
 % Spying
-When a thread does not have any more ready-tasks in its local priority queue, it will try to \emph{spy} some from the priority queue of another thread. 
-A thread spies ready-tasks from another priority queue by copying references to the tasks to its own, thread-local priority queue.
-Note that the tasks are then shared by multiple threads.
-Once a thread pops a task it informs all the other threads that the task is already being processed and thus should not be executed by other threads anymore; this is done by marking a task as \emph{taken}.
-The operations of the spying thread are linearized with the ones of all the other threads on the same priority queue.
+When a thread does not have any more keys (and thus tasks) in its local priority queue, it will try to \emph{spy} some from the priority queue of another thread. 
+A thread spies keys from another priority queue by copying references to them to its own, thread-local priority queue.
+Note that the keys are then shared by multiple threads.
+Once a thread pops a key it informs all the other threads that the associated task is already being processed and thus should not be executed by other threads anymore. This is done by marking a key as \emph{taken}.
+The operations of the spying thread need to be linearized with the operations of all the other threads on the same priority queue.
 
-\subsection{Description and analysis} \label{sec:mcpq:description}
+\subsection{Description and analysis} \label{sec:ppq:description}
 % Purely local ordering semantics
-The MCPQ observes only local ordering semantics and thus each thread maintains its own priority queue. 
+The PPQ observes only local ordering semantics.
 % A general idea
 % Concurrent and local part
-The data structure is split into a part that may be accessed by several threads concurrently and a second part -- built on top of the first -- that may be accessed by the owning thread only.
+Each thread maintains its own priority queue which is split into a part that may be accessed by several threads concurrently and a second part -- built on top of the first -- that may be accessed by the owning thread only.
 % Virtual array
-For the concurrent part, we assume a (potentially) infinite, thread-safe array-like data structure with linear (w.r.t.\ the capacity $n$ of data structure) access time for a whole sequence of $m\leq n$ items, called the \emph{Virtual Array}. 
-The Virtual Array is used to hold all the tasks currently managed by the thread-local priority queue and allows other threads to scan it for tasks awaiting execution.
-It is discussed in more detail in Section \ref{sec:virtual_array}.
+For the concurrent part, we assume a (potentially) infinite, thread-safe array-like data structure, called the \emph{Virtual Array}. 
+The Virtual Array is used to hold all the keys currently managed by the PPQ and allows other threads to scan it for keys with associated tasks that are awaiting execution.
 
 % Thread-local part
-The thread-local part is based on the idea of \emph{log-structured merge trees} (\cite{Wimmer14}, Section 5.7) and \emph{partitioning} to provide the operations \verb|push| and \verb|pop| as defined above.
-To do so, the Virtual Array of size $n$ is subdivided into an ordered sequence of a logarithmic number of blocks.
-Each block maintains a constant-size set of tasks whose priority is not dominated by any other task in that block
+The owner-exclusive part is based on the idea of \emph{log-structured merge trees} (Wimmer \cite{Wimmer14}, Section 5.7) and \emph{partitioning} and provides operations \texttt{push} and \texttt{pop} as defined above.
+The Virtual Array of size $n$ is subdivided into an ordered sequence of a logarithmic number of arrays, called \texttt{blocks}.
+Each block maintains a constant-size set of keys that are not dominated by any other key in that block
 and provides the following two operations:
 \begin{itemize}
-\item \verb|peek| finds a highest priority task w.r.t.\ the tasks managed by the block\footnote{Note that \verb|peek| on a block is similar to \verb|pop| on the whole priority queue, except that it does not remove the returned task from the data structure.}.
-\item \verb|take| removes a given task from the priority queue.
+\item \texttt{peek} finds a Pareto-optimal key w.r.t.\ the keys managed by the block\footnote{Note that \texttt{peek} on a block is similar to \texttt{pop} on the whole priority queue, except that it does not remove the found key from the data structure.}.
+\item \texttt{take} removes a given key from the priority queue.
 \end{itemize}
-
 % Overview of pop
-The \verb|pop| operation performs a \verb|peek| on each block to obtain a set of $O(\log n)$ tasks (one task from each block) that are not dominated w.r.t.\ to the tasks in their respective blocks.
-This set is then scanned linearly to find a task that is not dominated by any other currently in the queue. 
+The \texttt{pop} operation performs a \texttt{peek} on each block to obtain a set of\footnote{All logarithms are to base 2.} $O(\log n)$ keys (one key from each block) that are Pareto-optimal w.r.t.\ to the keys in their respective blocks.
+This set is then scanned linearly to find a key that is not dominated by any other key currently in the queue. 
+We say that a key is deleted if it was returned by a \texttt{pop} operation or its associated task was marked as taken or dead. 
 
 % Blocks are just logical; offset
-It is important to note that a block is only a logical construct which provides access to and manages a range of tasks stored in the virtual array. 
+It is important to note that a block is only a logical construct which provides access to and manages a range of keys stored in the Virtual Array. 
 This range is identified by the offset $o$ of the block and its capacity.
-Thus, any operation performed at position $i$ within a block is actually performed at position $o+i$ within the virtual array.
+Thus, any operation performed at position $i$ within a block is actually performed at position $o+i$ within the Virtual Array.
 
 % Memory management: tricky, we use Pheet's capabilities.
-Memory management for concurrent data structures can be hard, since a shared object may only be deleted if it can be guaranteed that the object is not accessed by any thread at the time of deletion.
-Pheet therefore provides a wait-free memory reuse scheme (see \cite{Wimmer14}, Section 4.3).
-We will not concern ourselves with memory management in this work, but make the following assumptions, justified by Lemmas 4.3.2 and 4.3.3 in \cite{Wimmer14}:
+Memory management for concurrent data structures is usually far from trivial, since a shared object may only be deleted if it can be guaranteed that the object is not accessed by any thread at the time of deletion.
+Pheet provides a wait-free memory reuse scheme and we will not concern ourselves with memory management in this work  but make the following assumptions, justified by Lemmas 4.3.2 and 4.3.3 in \cite{Wimmer14}:
 
 \begin{assumption} \label{ass:deleteIsConstant}
 Deleting objects savely requires $O(1)$ time.
@@ -462,11 +513,6 @@ Deleting objects savely requires $O(1)$ time.
 When employing a memory manager to manage memory of size $n$, the size of the allocated memory is $O(n)$.  
 \end{assumption}
 
-% keys
-As usual in the literature, we will denote the items managed by a priority queue as \emph{keys}.
-In the context of this work, an item is a priority vector which is associated with a task.
-We say that a key is deleted if it was returned by a \verb|pop| operation or its associated task was marked as taken or dead. 
-
 % analysis only for sequential case
 For the analysis, we will limit ourselves to the sequential case, i.e., 
 \begin{assumption} \label{ass:sequential}
@@ -474,11 +520,82 @@ We assume that no keys are spied or marked deleted by another thread.
 \end{assumption}
 
 % outline
-The concepts of log-structured merge-lists and partitioning are discussed in sections \ref{sec:mcpq:description:lsm} and \ref{sec:mcpq:description:partitioning}, respectively. 
-Section \ref{sec:mcpq:description:merging_blocks} shows how the logarithmic number of blocks is maintained.
-Operations \verb|peek| (Section \ref{sec:mcpq:description:peek}), \verb|take| (Section \ref{sec:mcpq:description:take}), \verb|push| (Section \ref{sec:mcpq:description:push}) and \verb|pop| (Section \ref{sec:mcpq:description:pop}) as well as \verb|spy| (Section \ref{sec:mcpq:description:spying}) are discussed as soon as all relevant concepts and structures have been introduced.
+The concepts of log-structured merge-lists and partitioning are discussed in sections \ref{sec:ppq:description:lsm} and \ref{sec:ppq:description:partitioning}, respectively. 
+Section \ref{sec:ppq:description:merging_blocks} shows how the logarithmic number of blocks is maintained.
+Operations \texttt{peek} (Section \ref{sec:ppq:description:peek}), \texttt{take} (Section \ref{sec:ppq:description:take}), \texttt{push} (Section \ref{sec:ppq:description:push}) and \texttt{pop} (Section \ref{sec:ppq:description:pop}) as well as \texttt{spy} (Section \ref{sec:ppq:description:spying}) are discussed as soon as all relevant concepts and structures have been introduced.
+
+\begin{comment}
+\begin{figure}
+\begin{center}
+\begin{tikzpicture}[>=stealth']
+\foreach \i in {0,...,12}{
+   \node[minimum size=\itemWidth, rectangle, draw, yshift=2cm, xshift=\i*\itemWidth](va\i) {\tiny $k_{\i}$};
+}
+\node[anchor=south west] at (va0.north west) {\tiny Virtual Array};
+
+\block{0}{8}{0}{\itemWidth*0};
+\block{1}{4}{8}{\itemWidth*9};
+\insertblock{1}{12}{\itemWidth*15};
+
+ 
+\draw[dotted] (b0i0.north west) -- (va0.south west);
+\draw[dotted] (b0i7.north east) -- (va7.south east);
+
+\draw[dotted] (b1i0.north west) -- (va8.south west);
+\draw[dotted] (b1i3.north east) -- (va11.south east);
+
+\draw[dotted] (bai0.north west) -- (va12.south west);
+\draw[dotted] (bai1.north east) -- (va12.south east);
+
+\end{tikzpicture}
+\end{center}
+\caption{Overview of the PPQ structure: The Virtual Array provides an array-like data structure of (potentially) infinite capacity and can be accessed concurrently in a lock- and wait-free manner by multiple threads. A log-structured merge-list operating on the keys stored by the Virtual Array is used by the owning thread to find Pareto-optimal keys. }
+\label{fig:structure}
+\end{figure}
+\end{comment}
 
 
+% Virtual Array
+\subsubsection{Virtual array} \label{sec:virtual_array}
+% Motivation
+The Virtual Array is a thread-safe array-like data structure with iterator-based access.
+% concurrency
+It may be traversed in forward direction by all threads, but only the owning thread may traverse it backwards or alter its structure. 
+To ensure thread-safety, references to the keys\footnote{We call the elements of the array \emph{keys} because it is part of the PPQ and thus deals with the same entities.} in the array need to be stored as atomic pointers.
+% Operations
+It provides the following operations:
+\begin{itemize}
+\item \texttt{begin} obtains an iterator to the first key in the Virtual Array.
+\item \texttt{end} obtains an iterator to the past-the-end\footnote{This is the theoretical key \emph{after} the last key in the array and thus the end-iterator does not point to any key.} key in the Virtual Array.
+\item \texttt{remove(iterator l, iterator r)} removes the range $]l, r[$ from the Virtual Array and frees the keys stored there. 
+\end{itemize}
+An iterator provides the usual operations:
+\begin{itemize}
+\item \texttt{++} (\texttt{---}) moves the iterator to the next (previous) key.
+\item \texttt{advance(m)} applies the \texttt{++} (if $m$ is negative: the \texttt{---}) operator $m$ times.
+\end{itemize}
+
+% Implementation
+The Virtual Array is implemented via a doubly-linked list of arrays of constant size $s_\text{v}$, called \emph{ArrayBlocks}. 
+% Analysis
+The operations \texttt{begin} and \texttt{end} of the Virtual Array as well as the \texttt{++} and \texttt{---} operators of an iterator trivially require $O(1)$ time, while the \texttt{advance} operation has time complexity\footnote{In practice, this operation can be speed-up to $m/s_v$ time.} $O(m)$.
+% Access time
+% Deletion
+To ensure thread safety, the \texttt{delete} operation only removes whole ArrayBlocks from the Virtual Array. 
+Given iterators $l$ amd $r$, it removes the range $[l', r']$, where $l' = c_1 s_v$ is the minimal $l'$ s.t.\ $l < l' $ and $r' = c_2 s_v$ is the maximal $r'$ s.t.\ $r' < r $, for constants $c_1, c_2 > 0$.
+Note that keys in the range $]l, l'[$ and $]r', r[$ are not removed, i.e., after the \texttt{remove} operation the range $]l, r[$ is not necessarily empty and may contain up to $2 s_v$ elements. 
+It is the user's responsibility to always apply the operation with the largest possible range\footnote{I.e., removing the range $]l,r[$ cannot be done by using the \texttt{remove} operation twice with the ranges $]l, k[$, $]k-1, r[$ for some $k$, $l<k<r$.} and to include keys that have not been removed although they were in the range of a previous \texttt{remove} operation\footnote{Section \ref{sec:ppq:description:partitioning} shows how this can be done.}.
+The \texttt{delete} operation trivially requires $O(1)$ time.
+
+\begin{lemma} \label{lemma:virutalArrayMemory}
+To store $n$ keys, the Virtual Array allocates $O(n)$ memory.
+\end{lemma}
+\begin{proof}
+Assuming that the \texttt{remove} operation is applied as described above, the worst case is 1 non-deleted key per ArrayBlock. If an ArrayBlock does not contain any non-deleted items, the closest preceding non-deleted key is in a preceding ArrayBlock, while the closest succeeding key is in a succeeding ArrayBlock, implying that the ArrayBlock was deleted by a \texttt{remove} operation. 
+Since ArrayBlocks are of constant size, the Virtual Array is of size at most $s_v n$.
+\end{proof}
+
+\subsubsection{Log-structured merge-lists (LSML)} \label{sec:ppq:description:lsm}
 \newcommand{\itemWidth}{7mm}
 % draw a block
 % #1	id of each block element will be b\i#1
@@ -492,6 +609,7 @@ Operations \verb|peek| (Section \ref{sec:mcpq:description:peek}), \verb|take| (S
     \pgfmathsetmacro\idx{\i + #3}
     \node[minimum size=\itemWidth, rectangle, draw, xshift=#4+(\i-1)*\itemWidth](b#1i\i) {\tiny $k_{\pgfmathprintnumber{\idx}}$};
 }
+\node[anchor=north west] at (b#1i0.south west) {\tiny Block $b_{#1}$};
 }
 
 \newcommand{\blockto}[5]{
@@ -524,82 +642,10 @@ Operations \verb|peek| (Section \ref{sec:mcpq:description:peek}), \verb|take| (S
 \node[anchor=north west] at (bai0.south west) {\tiny Block $b_a$};
 }
 
-\begin{comment}
+
 \begin{figure}
 \begin{center}
-\begin{tikzpicture}[>=stealth']
-\foreach \i in {0,...,12}{
-   \node[minimum size=\itemWidth, rectangle, draw, yshift=2cm, xshift=\i*\itemWidth](va\i) {\tiny $k_{\i}$};
-}
-\node[anchor=south west] at (va0.north west) {\tiny Virtual Array};
-
-\block{0}{8}{0}{\itemWidth*0};
-\block{1}{4}{8}{\itemWidth*9};
-\insertblock{1}{12}{\itemWidth*15};
-
- 
-\draw[dotted] (b0i0.north west) -- (va0.south west);
-\draw[dotted] (b0i7.north east) -- (va7.south east);
-
-\draw[dotted] (b1i0.north west) -- (va8.south west);
-\draw[dotted] (b1i3.north east) -- (va11.south east);
-
-\draw[dotted] (bai0.north west) -- (va12.south west);
-\draw[dotted] (bai1.north east) -- (va12.south east);
-
-\end{tikzpicture}
-\end{center}
-\caption{Overview of the MCPQ structure: The Virtual Array provides an array-like data structure of (potentially) infinite capacity and can be accessed concurrently in a lock- and wait-free manner by multiple threads. A log-structured merge-list operating on the keys stored by the Virtual Array is used by the owning thread to find Pareto-optimal keys. }
-\label{fig:structure}
-\end{figure}
-\end{comment}
-
-
-% Virtual Array
-\subsubsection{Virtual array} \label{sec:virtual_array}
-% Motivation
-The Virtual Array is a thread-safe array-like data structure with iterator-based access.
-% concurrency
-It may be traversed in forward direction by all threads, but only the owning thread may traverse it backwards or alter its structure. 
-To ensure thread-safety, references to the items in the array need to be stored as atomic pointers.
-% Operations
-It provides the following operations:
-\begin{itemize}
-\item \verb|begin| obtains an iterator to the first item in Virtual Array.
-\item \verb|end| obtains an iterator to the past-the-end\footnote{This is the theoretical item \emph{after} the last item in the array and thus the end-iterator does not point to any element.} item in the Virtual Array.
-\item \verb|remove(iterator l, iterator r)| removes the range $]l, r[$ from the Virtual Array and frees the items stored there. 
-\end{itemize}
-An iterator provides the usual operations:
-\begin{itemize}
-\item \verb|++| (\verb|--|) moves the iterator to the next (previous) item.
-\item \verb|advance(m)| applies the \verb|++| (if $m$ is negative: the \verb|--|) operator $m$ times.
-\end{itemize}
-
-
-% Implementation
-The Virtual Array is implemented via a doubly-linked list of arrays of constant size $s_\text{v}$, called \emph{blocks}. 
-% Analysis
-The operations \verb|begin| and \verb|end| of the Virtual Array as well as the \verb|++| and \verb|--| operators of an iterator trivially require $O(1)$ time, while the \verb|advance| operation has time complexity\footnote{In practice, this operation can be speed-up to require $m/s_v$ time.} $O(m)$.
-% Access time
-% Deletion
-To ensure thread safety, the \verb|delete| operation only removes whole blocks from the Virtual Array. 
-Given iterators $l,r$, it removes the range $[l', r']$, where $l' = c_1 s_v$ is the minimal $l'$ s.t.\ $l < l' $ and $r' = c_2 s_v$ is the maximal $r'$ s.t.\ $r' < r $, for constants $c_1, c_2 > 0$.
-Note that items in the range $]l, l'[$ and $]r', r[$ are not removed, i.e., after the \verb|remove| operation the range $]l, r[$ is not necessarily empty and may contain up to $2 s_v$ elements. 
-It is the user's responsibility to always apply the operation with the largest possible range\footnote{I.e., removing the range $]l,r[$ cannot be done by using the \verb|remove| operation twice with the ranges $]l, k[$, $]k-1, r[$ for some $k$, $l<k<r$.} and including items that have not been removed although they were in the range of a previous \verb|remove| operation\footnote{Section \ref{sec:mcpq:description:partitioning} shows how this is done}.
-The \verb|delete| operation requires $O(1)$ time.
-
-\begin{lemma} \label{lemma:virutalArrayMemory}
-To store $n$ items, the Virtual Array allocates $O(n)$ memory.
-\end{lemma}
-\begin{proof}
-Assuming that the \verb|remove| operation is applied as described above, the worst case is 1 non-deleted item per block. If a block does not contain any non-deleted items, the closest preceding non-deleted item is in a preceding block, while the closest succeeding item is in a succeeding block, implying that the block would have been deleted by a \verb|remove| operation. 
-Since blocks are of constant size, the Virtual Array is of size at most $s_v n$.
-\end{proof}
-
-\subsubsection{Log-structured merge-lists (LSML)} \label{sec:mcpq:description:lsm}
-\begin{figure}
-\begin{center}
-\subfigure [Structure of an LSM-L containing 7 keys.] {
+\subfigure [Structure of an LSML containing 7 keys.] {
     \begin{tikzpicture}[>=stealth']
     \block{0}{4}{0}{\itemWidth*0};
     \block{1}{2}{4}{\itemWidth*5};
@@ -610,7 +656,7 @@ Since blocks are of constant size, the Virtual Array is of size at most $s_v n$.
     \end{tikzpicture}
 }
 
-\subfigure [After adding an additional key, block $b_a$ is full.] {
+\subfigure [After adding an additional key, ArrayBlock $b_a$ is full.] {
     \begin{tikzpicture}[>=stealth']
     \block{0}{4}{0}{\itemWidth*0};
     \block{1}{2}{4}{\itemWidth*5};
@@ -621,7 +667,7 @@ Since blocks are of constant size, the Virtual Array is of size at most $s_v n$.
     \end{tikzpicture}
 }
 
-\subfigure [After the merge of blocks $b_1$ and $b_a$. A new, empty block $b_a$ is added. ] {
+\subfigure [After the merge of blocks $b_1$ and $b_a$. A new, empty ArrayBlock $b_a$ is added. ] {
     \begin{tikzpicture}[>=stealth']
     \block{0}{4}{0}{\itemWidth*0};
     \block{1}{4}{4}{\itemWidth*5};
@@ -631,7 +677,7 @@ Since blocks are of constant size, the Virtual Array is of size at most $s_v n$.
     \end{tikzpicture}
 }
 
-\subfigure [After the merge of blocks $b_0$ and $b_1$.] {
+\subfigure [After the merge of ArrayBlocks $b_0$ and $b_1$.] {
     \begin{tikzpicture}[>=stealth']
     \block{0}{8}{0}{\itemWidth*0};
     \insertblock{0}{8}{\itemWidth*9};
@@ -642,10 +688,10 @@ Since blocks are of constant size, the Virtual Array is of size at most $s_v n$.
 \label{fig:lsml_merge}
 \end{figure}
 % what is it; blocks; size
-An LSML is a doubly-linked list of a logarithmic number of sorted arrays, called \emph{blocks}. A block has a capacity of $c 2^l$, where $c$ is the capacity of the smallest block and $l$ is the level of a block.
+An LSML is a doubly-linked list of a logarithmic number of sorted arrays, called \emph{blocks}\footnote{Note that the blocks of the LSML are different from the ArrayBlocks of the Virtual Array.} . A block has a capacity of $c 2^l$, where $c$ is the capacity of the smallest block and $l$, $l\geq 0$ is the level of a block.
 % nr keys in blocks, insert block b_0
-A block of level $l$ contains exactly $c 2^l$ keys and at most one block of level $l$ is allowed.
-Given $n$ keys, $n' = c \lfloor \frac{n}{c} \rfloor $ keys are stored in such blocks, while the remaining $n-n'$ keys are stored in an additional block with capacity $c$, called $b_a$, which thus contains 0 to $c$ keys.  
+A block of level $l$ contains exactly $c 2^l$ keys and at most one block of each level is allowed.
+Given $n$ keys, $n' = c \lfloor \frac{n}{c} \rfloor $ keys are stored in such blocks, while the remaining $n-n'$ keys are stored in an additional block with capacity $c$, called $b_a$, which contains 0 to $c$ keys.  
 % size of blocks
 The levels of the blocks can easily be determined by the binary representation of $n'$:
 The level of the $i$-th block is equal to the index of the $i$-th non-zero bit in the binary representation.
@@ -656,8 +702,9 @@ Block $b_a$ is assigned level $0$ and made the successor of $b_l$ only once it i
 % Merging
 In case block $b_l$ is of level $0$, blocks $b_l$ and $b_a$ are \emph{merged} into a single block of level 1.
 To maintain the logarithmic number of blocks, this merging operation is applied recursively, that is, two blocks of the same level $l$ are always merged to a single block of level $l+1$.
-Note that a new, empty block $b_a$ is created after the old one was merged with another block.
-Fig.\ \ref{fig:lsml_merge} illustrates the structure of an LSM-L as well as the merging operation triggered by the insertion of a new key.
+Note that in an LSML, two blocks of same level or always next to each other. 
+A new, empty block $b_a$ is created after the old one was merged with another block.
+Fig.\ \ref{fig:lsml_merge} illustrates the structure of an LSML as well as the merging operation triggered by the insertion of a new key.
 
 \begin{figure}
 \begin{center}
@@ -701,7 +748,7 @@ Fig.\ \ref{fig:lsml_merge} illustrates the structure of an LSM-L as well as the 
 
 % Removing keys
 Deletion of keys is handled lazily: A key is at first merely marked as deleted. 
-Once half of the keys of a block $b_i$ have been removed, it is shrunk to half its original capacity by decrementing its level. If necessary, the block is merged with its successor $b_{i+1}$ (blocks of level 0 will be deleted once empty; the block $b_a$ is never deleted or shrunk).
+Once half of the keys of a block $b_i$ have been removed, it is shrunk to half its original capacity and its level is decrementing. If necessary, the block is merged with its successor $b_{i+1}$ (blocks of level 0 will be deleted once empty; the block $b_a$ is never deleted or shrunk).
 Note that at most one merge operation is necessary after shrinking a block.
 Fig.\ \ref{fig:lsml_remove} illustrates this process.
 
@@ -709,7 +756,7 @@ Fig.\ \ref{fig:lsml_remove} illustrates this process.
 Merging two blocks requires constant time.
 \end{corollary}
 \begin{proof}
-Since all operations are executed in-place on the Virtual Array, two blocks are merged by doubling the capacity (i.e., the range of keys maintained by the block) of the first and deleting the second block.
+Since all operations are executed in-place on the Virtual Array, two blocks are merged by doubling the capacity (i.e., the range of keys maintained by the block) and increasing the level of the first block and deleting the second.
 \end{proof}
 
 \begin{lemma} \label{lemma:nrBlocks}
@@ -724,24 +771,16 @@ Once half of the keys of a block are marked as deleted, the block is shrunk to h
 Thus, $\lfloor \log n \rfloor$ such blocks contain at least $n/2 + 1$ non-deleted keys.
 An additional block of level $l>0$ must be of level at least $\lfloor \log n \rfloor + 1$ (at most one block of any level may exist) and thus contain at least $2^{\lfloor \log n \rfloor + 1}/2 \geq n/2 $ non-deleted keys; a contradiction, since less than $n/2$ keys are left.
 In addition to the $\lfloor \log n \rfloor$ blocks of level $l>0$, the additional block $b_a$ is always allocated and one block of level 0 containing just 1 key may be present.
-For $c>1$, the number of blocks does not increase since the capacity of each is multiplied by $c$.
+For $c>1$, the number of blocks does not increase since the capacity of each block is multiplied by $c$.
 \end{proof}
 
-Note that the size of each block is $O(n)$.
-So far we have not discussed how a block actually manages the keys it contains (this will be done in Section \ref{sec:mcpq:description:partitioning}). 
-
-
-\subsubsection{LSML-Blocks} \label{sec:mcpq:description:partitioning}
-%Idea
-A block partitions the keys it holds by a pivot value, which is found by randomly\footnote{All random selections in this work are meant to be made \emph{uniformly and independently.}} selecting a key within the range to be partitioned and a random value $i \in [1,\dots,d]$ (where $d$ is the cardinality of the keys). 
-The pivot element $x$ is then taken to be $x = k[i]$ (Algorithm \ref{algo:partition}). Our procedure (Algorithm \ref{algo:partition}) for in-place partitioning multi-dimensional keys is similar to the well-known partitioning algorithm for scalar values\footnote{In principle, one could take the whole key as the pivot element. However, this might make the partitioning infeasible if the set of Pareto-optima is large.}.
-
+\subsubsection{LSML-Blocks} \label{sec:ppq:description:partitioning}
 %pivot generation
 \begin{algorithm}
-\caption{Pseudo-code for the generation of a pivot element}
-\label{algo:partition}
+\caption{Pseudo code for the generation of a pivot element}
+\label{algo:pivot}
 \begin{algorithmic}[1]
-\Function{Pivot}{Block $b$, $left$, $right$}
+\Function{pivot}{Block $b$, $left$, $right$}
 \State Randomly select a key $k$ in the range $b[left],\dots, b[right]$
 \State $i \gets$ random number in $[1,\dots,d]$
 \State $x \gets k[i]$ 
@@ -750,21 +789,24 @@ The pivot element $x$ is then taken to be $x = k[i]$ (Algorithm \ref{algo:partit
 \end{algorithmic}
 \end{algorithm}
 
+%Idea
+A block partitions the keys it holds by a pivot value, which is found by randomly\footnote{All random selections in this work are meant to be made \emph{uniformly and independently.}} selecting a key within the range to be partitioned and a random value $i \in [1,\dots,d]$ (where $d$ is the number of dimensions of a key). 
+The pivot element $x$ is then taken to be $x = k[i]$ (Algorithm \ref{algo:pivot}). Our procedure (Algorithm \ref{algo:partition}) for in-place partitioning multi-dimensional keys is similar to the well-known partitioning algorithm for scalar values\footnote{In principle, one could take the whole key as the pivot element. However, this might make the partitioning infeasible if the set of Pareto-optima is large.}.
 
 % partitioning
-\begin{algorithm}
-\caption{Pseudo-code for partitioning a block}
+\begin{algorithm}[t]
+\caption{Pseudo code for partitioning a block}
 \label{algo:partition}
 \begin{algorithmic}[1]
 \Require{Block $b$; $left,right \leq$ size of $b$; $left\leq right$}
 \Require{$s_p$: desired maximum size of right partition $p_r$}
-\Function{Partition}{Block $b$, $left$, $right$}
-\State $(x,i) \gets$ \Call{pivot}{$b$, $l$, $r$}
+\Function{partition}{Block $b$, $left$, $right$}
+\State $(x,i) \gets$ \Call{pivot}{$b$, $left$, $right$}
 \While{$left < right$}
-  \While{$left < right$ and (key $k = b[left]$,  $k \less_i x$)}
+  \While{$left < right$ and (key $k = b[left]$,  $k \more_i x$)}
     \State $left = left + 1$
   \EndWhile
-  \While{$left < right$ and (key $k = b[right]$, $k \moreeq_i x$)}
+  \While{$left < right$ and (key $k = b[right]$, $k \lesseq_i x$)}
     \State $right = right -1 $
   \EndWhile
   \If{$left < right$}
@@ -774,58 +816,31 @@ The pivot element $x$ is then taken to be $x = k[i]$ (Algorithm \ref{algo:partit
   \EndIf
 \EndWhile
 \Statex \Comment{Check if key at $left$ belongs to left partition}
-\If{$k = b[left]$, $k \less_i x$}
+\If{$k = b[left]$, $k \more_i x$}
   $ left = left + 1$
 \EndIf
 \Statex \Comment{Recursively partition the right part until it falls below the cut-off value}
 \If{$left < right$ and $(right-left) > s_p$}
-  \State \Call{Partition}{$b$,$left$,$right$}
+  \State \Call{partition}{$b$,$left$,$right$}
 \EndIf
 \EndFunction
 \end{algorithmic}
 \end{algorithm}
+
 Keys with less priority (at dimension $i$) than the pivot element get sorted to the left, while keys with higher or equal priority are sorted to the right.
-We will call these two parts the left and the right partition and use a subscript to indicate which partitioning step created them: The two partitions created by the first partitioning step are thus partitions dubbed $p_{l1}$ and $p_{r1}$.
+This implies that the key used to generate the pivot element is sorted to the right as well.
+We will call these two parts the left and the right partition and use a subscript to indicate which partitioning step created them: The two partitions created by the first partitioning step are dubbed $p_{l1}$ and $p_{r1}$.
 
 %Pareto optimality
-Note that keys that get sorted into the right partition are guaranteed to not be dominated by the ones in the left (since they have a higher priority value in at least one dimension).
-Nevertheless, the left partition might contain Pareto-optimal keys; this behavior is acceptable since the MCPQ is required to find but one Pareto-optimal key and not the whole set of Pareto-optima.
-The right partition $p_{r1}$ is partitioned recursively until it is smaller than a given constant cut-off value $s_p$, the maximum size that we are aiming for the right partition.
-Note that the left partition $l_i$ of each partitioning step is not processed further and that the last right partition (for simplicity referred to as $p_r$) contains keys that are not dominated by any task in any of the left partitions, 
+Keys sorted into the right partition are guaranteed to not be dominated by the ones in the left (since they have a higher priority value in at least one dimension).
+Nevertheless, the left partition might contain Pareto-optimal keys; this behavior is acceptable since the PPQ is required to find but one Pareto-optimal key and not the whole set of Pareto-optima.
+The right partition $p_{r1}$ is partitioned recursively until it is smaller than a given constant cut-off value $s_p$, the maximum size that we are aiming for in the right partition.
+The left partition $l_i$ of each partitioning step is not processed further.
+The right partition created by the last step (for simplicity referred to as $p_r$) contains keys that are not dominated by any key in any of the left partitions, 
 % the problem with the right partition
-but it may itself contain two keys where one dominates the other. 
-The \verb|peek| operation (Section \ref{sec:mcpq:description:peek} addresses this problem by linearly scanning the right partition $p_r$ to ensure that a non-dominated key is returned.
-A different approach would be to flat out compute the Pareto-optima within $r_p$ by a linear expected-time algorithm as discussed in \cite{BentleyCL93, GodfreySG07}.
-
-% figs and refs
-Fig.\ \ref{fig:block_structure} the structure of a block after it was partitioned while Fig.\ \ref{fig:partition_with_nonactive}. provides an example for the partitioning process (both include some details that will be covered in the remainder of this section).
-
-% problems we have here
-In the algorithm outlined above, several important details still need to be addressed:
-
-\medskip
-\noindent
-\textbf{Pivot generation}. As with other randomized algorithms, e.g., Quicksort, it is crucial to select ``good'' pivot elements to avoid worst-case behavior. 
-To get reasonable pivot values (at least on expectation) we sample multiple times and then choose the median as our pivot element.  
-\begin{corollary}
-Generating a pivot element takes $O(n)$ time. 
-\end{corollary}
-\begin{proof}
-Accessing a random item requires $O(n)$ times (due to the underlying Virtual Array). Accessing a constant number of items and selecting the median of those does not increase the asymptotic complexity. 
-\end{proof}
-
-\medskip
-\noindent
-\textbf{Ensuring termination}. The algorithm as given above does not necessarily terminate.
-Assuming that all the keys managed by a block are equal, partitioning would sort all the keys into the right partition -- irregardless of which key is chosen as the pivot -- and then try to partition the very same elements again.
-We call such an event a ``failed partitioning step''
-This event may also occur if we choose the same pivot element as was used by the last partitioning step.
-While in this case we can try to generate a new, different pivot element, the former case does not allow for further partitioning and we ensure termination by aborting the recursive procedure after a constant number of successive failed partitioning steps.
-In this case, the size of the right-most partition will be larger than the size we are aiming for; nevertheless, it is guaranteed that the keys it contains are not dominated by keys that have been sorted to the left.
-In the following, we will make the following assumption:
-\begin{assumption} \label{ass:partition_succeeds}
-After partitioning a block, its right partition $p_r$ is smaller than or equal to the constant cut-off value $s_p$. 
-\end{assumption} 
+though it may itself contain two keys where one dominates the other. 
+The \texttt{peek} operation (Section \ref{sec:ppq:description:peek}) addresses this problem by linearly scanning the right partition $p_r$ to ensure that a non-dominated key is returned.
+A different approach would be to flat out compute the Pareto-optima within $r_p$ by a linear expected-time algorithm as presented in \cite{BentleyCL93, GodfreySG07}.
 
 \newcommand{\partition}[4]{
   \node[minimum width=#4, minimum height=8mm, rectangle, draw, anchor=west] at (#2.east) (#1) {};
@@ -851,26 +866,57 @@ After partitioning a block, its right partition $p_r$ is smaller than or equal t
 \label{fig:block_structure}
 \end{center}
 \end{figure}
+% figs and refs
+Fig.\ \ref{fig:block_structure} depictst the structure of a block after it was partitioned (The $p_d$ section contains deleted keys and is discussed in detail later on).
 
+\medskip
+% problems we have here
+In the algorithm outlined above, several important details still need to be addressed:
 
 \medskip
 \noindent
-\textbf{Handling dead, taken and removed tasks}. Once a key was returned by \verb|pop|, it has to be removed from the queue. 
+\textbf{Pivot generation}. As with other randomized algorithms, e.g., Quicksort, it is crucial to select ``good'' pivot elements to avoid worst-case behavior. 
+To get reasonable pivot values (at least on expectation) we sample multiple times and then choose the median as our pivot element.  
+\begin{corollary}
+Generating a pivot element takes $O(n)$ time. 
+\end{corollary}
+\begin{proof}
+Accessing a random key within a block requires $O(n)$ times (due to the underlying Virtual Array). Accessing a constant number of keys and selecting the median of those does not increase the asymptotic complexity. 
+\end{proof}
+
+\medskip
+\noindent
+\textbf{Ensuring termination}. The algorithm as given above does not necessarily terminate.
+Assuming that all the keys managed by a block are equal, partitioning would sort all the keys into the right partition -- irregardless of which key is chosen as the pivot -- and then try to partition the very same elements again.
+We call such an event a ``failed partitioning step''.
+It may also occur if we choose the same pivot element as was used by the last partitioning step.
+While in this case we can try to generate a new, different pivot element, the former case does not allow for further partitioning and we ensure termination by aborting the recursive procedure after a constant number of successive failed partitioning steps.
+In this case, the size of the right-most partition will be larger than the size we are aiming for; nevertheless, it is guaranteed that the keys it contains are not dominated by keys that have been sorted to the left by preceding partitioning steps.
+We make the following assumption:
+\begin{assumption} \label{ass:partition_succeeds}
+After partitioning a block, its right partition $p_r$ is smaller than or equal to the constant cut-off value $s_p$. 
+\end{assumption} 
+
+\medskip
+\noindent
+\textbf{Handling dead, taken and removed tasks}. Once a task was returned by \texttt{pop}, its associated key has to be removed from the queue. 
 Furthermore, keys associated with tasks that have been marked dead or taken also need to be removed. 
 % active, non-active tasks
-We will subsume all those tasks as ``non-active'' and its associated keys as deleted, whereas a task still awaiting execution is called an active task,
+We subsume all those tasks as ``non-active'' and its associated keys as deleted, whereas a task still awaiting execution is called an active task.
 % How a block handles dead tasks
 Speaking informally, each block moves its deleted keys to the end of the block and keeps them there.
-Once the block gets merged with another block, the deleted keys of both blocks are moved to the end of the block generated by the merge and thus the deleted keys gradually accumulate in consecutive ranges and, once the number of deleted keys is large enough, part of them can be removed via the \verb|remove| operation of the Virtual Array. Smaller ranges will move to the end of the LSML and accumulate there.
+Once the block gets merged with another block, the deleted keys of both blocks are moved to the end of the block generated by the merge.
+Thus, the deleted keys gradually accumulate in consecutive ranges and once the number of deleted keys is large enough, part of them can be removed via the \texttt{remove} operation of the Virtual Array. 
+Smaller ranges will move to the last block of the LSML and accumulate there.
 
-\begin{algorithm}
-\caption{Pseudo-code for partitioning with deleted keys}
+\begin{algorithm}[t]
+\caption{Pseudo code for partitioning with deleted keys}
 \label{algo:partition_with_nonactive}
 \begin{algorithmic}[1]
 \While{$left < right$}
 \State key $k \gets b[left]$
 \If{$k$ is a non-deleted key}
-    \If{$k \less_i x$}
+    \If{$k \more_i x$}
     \State $left = left + 1$  \Comment{If $k$ has less priority than the pivot, it stays}
     \Else
     { break;} \Comment{Otherwise, it is moved to the right partition}
@@ -885,7 +931,7 @@ Once the block gets merged with another block, the deleted keys of both blocks a
 \While{$left < right$}
 \State key $k \gets b[right]$
 \If{$k$ is a non-deleted key}
-    \If{$k \moreeq_i x$}
+    \If{$k \lesseq_i x$}
     \State $right = right - 1$   \Comment{If the pivot has less priority than $k$, $k$ stays}
     \Else { break;} \Comment{Otherwise, $k$ is moved to the left partition.}
     \EndIf
@@ -904,7 +950,7 @@ Once the block gets merged with another block, the deleted keys of both blocks a
 The partitioning procedure is adapted as follows to handle deleted keys (Algorithm \ref{algo:partition_with_nonactive} replaces lines 4-9 in Algorithm \ref{algo:partition}):
 \begin{itemize}
 \item An additional partition, called $p_{d}$, is used for storing the deleted keys. The index $delete$ is used to keep track of it and is initially set to $right$, i.e., the end of the range to be partitioned.
-\item If a deleted key is encountered during the scan for the next key to swap, it is swapped out to the section $p_d$ holding the deleted keys. 
+\item If a deleted key is encountered during the scan for the next key to swap, it is swapped out to section $p_d$. 
 \end{itemize}
 
 \begin{lemma}
@@ -912,40 +958,41 @@ The partition operation has worst-case complexity $O(n^2)$.
 \end{lemma}
 \begin{proof}
 The complexity of Algorithm \ref{algo:partition} is dominated by the outer while-loop (lines 3-15) and the recursive call (generating a pivot element requires $O(n)$, the checks in lines 16 and 18 require constant time). 
-The loop is executed at most $n$ times, since either $left$ is incremented or $right$ is decremented at least 1 in each execution. Each execution of one of the inner loops (lines 4-6 and 7-9, respectively) reduces the number of executions of the outer loop by 1. 
+The loop is executed at most $n$ times, since either $left$ is incremented or $right$ is decremented by at least 1 in each execution. 
+Each execution of one of the inner loops (lines 4-6 and 7-9, respectively) reduces the number of executions of the outer loop by 1. 
 
-The same argument holds for the modification (given in Algorithm \ref{algo:partition_with_nonactive}, with one exception: When, while scanning from left (right), a deleted key is encountered, it is swapped to section $p_d$. 
-If $delete$ and $right$ point to the same location, $right$ can be decremented since the key it points to is a deleted one and therefore does not have to be moved anymore. 
-If that is not the case however, neither $left$ nor $right$ may be advanced, since the items at their respective locations have not been checked yet. 
-This, however, can happen at most $n$ times for the whole block, since $right <= delete$ always holds and thus the worst-case complexity does not change.
+The same argument holds for the modification (given in Algorithm \ref{algo:partition_with_nonactive}), with one exception: 
+If a deleted key is encountered while scanning from left (right), it is swapped to section $p_d$. 
+If $delete$ and $right$ point to the same location, $right$ can be decremented since the key it points to is now a deleted key. 
+If that is not the case, however, neither $left$ nor $right$ may be advanced, since the keys at their respective locations have not been checked yet. 
+This can happen at most $n$ times for the whole block, since $right <= delete$ always holds.
+Thus, the worst-case complexity does not change.
 
-Due to Assumption \ref{ass:partition_succeeds}, we know that each successive call reduces the size of the range that remains to be partitioned by at least 1 item, in a constant number of partitioning attempts. 
+Due to Assumption \ref{ass:partition_succeeds}, we know that each successive call reduces the size of the range that remains to be partitioned by at least 1 key in a constant number of partitioning attempts. 
 Thus, the recursion depth is bounded by $O(n)$ and partitioning requires $O(n^2)$ time in the worst case.
 \end{proof}
 
 \begin{conjecture}
-Partition has expected time complexity $O(n \log n)$.
+\texttt{partition} has expected time complexity $O(n \log n)$.
 \end{conjecture}
-The conjecture is immediate if one assumes that each pivot element is taken from a key close to the median (when ordered keys by their values at dimension $i$, which the pivot is taken from) to be partitioned, since each partitioning step would half the size of the range that requires further partitioning.
-To prove the conjecture formally, assumptions about the distribution of the keys would have to be made. 
-
-The deleted keys are only touched once to move them to the section of deleted items and that the number of non-deleted items in a block never increases. This further indicates reasonable performance in practice.
-
+The conjecture is immediate if one assumes that each pivot element is taken from a key close to the median (when ordered keys by their values at dimension $i$ the pivot is taken from) of the set of keys to be partitioned, since each partitioning step would roughly half the size of the range that requires further partitioning.
+Furthermore, the deleted keys are only touched once to move them to section $p_d$ and the number of non-deleted keys in a block never increases. This further indicates reasonable performance in practice.
+However, to prove the conjecture formally, assumptions about the distribution of the keys would have to be made. 
 
 \subsubsection*{Removing deleted keys}
-After partitioning the whole block, its level is reduced as far as possible (Algorithm \ref{algo:reducellvl}) and, in case the section containing deleted keys is large enough, part of them are removed from the LSML via the \verb|remove| operation of the Virtual Array.
+After partitioning the whole block, its level is reduced as far as possible (Algorithm \ref{algo:reducellvl}) and, in case the section containing deleted keys is large enough, part of them are removed from the LSML via the \texttt{remove} operation of the Virtual Array.
 The level $l$ of a block $b$ can be reduced if
 \begin{itemize}
 \item $l > 0$ (the minimum level of a block is $0$), and 
 \item the level of the block succeeding $b$ is is smaller than $l$ (if such a block exists), and
-\item all non-deleted keys are covered after reducing the level, i.e., the $delete$ index must remain inside the range of keys covered by the block.
+\item all non-deleted keys are covered after reducing the level, i.e., the $delete$ index must remain inside the range of keys covered by the block, which is $s_p 2^l$.
 \end{itemize}
 
 \begin{algorithm}
-\caption{Pseudo-code for shrinking a block}
+\caption{Pseudo code for shrinking a block}
 \label{algo:reducellvl}
 \begin{algorithmic}[1]
-\Function{Shrink}{Block $b$}
+\Function{shrink}{Block $b$}
 \State $l \gets $ level of $b$ 
 \State $l_s \gets $ level of the successor of $b$
 \While{$l > 0$ and $l_s < l$ and $delete < s_p  2^{l-1}$}
@@ -957,22 +1004,23 @@ The level $l$ of a block $b$ can be reduced if
 \end{algorithm}
 
 \begin{corollary}
-The \textsc{Shrink} operation has time complexity $O(\log n)$.
+The \texttt{shrink} operation has time complexity $O(\log n)$.
 \end{corollary}
 \begin{proof}
-The loop is executed at most $l$ times. Since $n = 2^{\log l}$ (by definition of a block), the number of executions is bounded by $O(\log n)$ times while removing a range of items from the Virtual Array requires $O(1)$ time (see Section \ref{sec:virtual_array}).
+The loop is executed at most $l$ times. Since $n = s_p 2^l$ (by definition of a block), the number of executions is bounded by $O(\log n)$. 
+Removing a range of keys from the Virtual Array requires $O(1)$ time (see Section \ref{sec:virtual_array}).
 \end{proof}
 
 \begin{lemma} \label{lemma:partitionandshrink}
 After partitioning and shrinking a block, it uses $O(n)$ memory to store $n$ keys. 
 \end{lemma}
 \begin{proof}
-\textsc{Partition} moves all deleted keys to the section of deleted keys, and \textsc{Shrink} extends this section as far as possible. It follows directly from the call of the Virtual Array's \textsc{Remove} operation at the end of the \textsc{Shrink} procedure at most a constant number of keys are stored by the block in addition to the $n$ keys.
+\texttt{partition} moves all deleted keys to section $p_d$ and \texttt{shrink} extends this section as far as possible. It follows directly from the call of the Virtual Array's \texttt{remove} operation at the end of the \texttt{shrink} procedure that at most a constant number of keys are stored in the block in addition to the $n$ non-deleted keys.
 \end{proof}
 
-\subsubsection{Peek} \label{sec:mcpq:description:peek}
+\subsubsection{Peek} \label{sec:ppq:description:peek}
 \begin{algorithm}
-\caption{Pseudo-code for the peek operation}
+\caption{Pseudo code for the \texttt{peek} operation}
 \label{algo:peek}
 \begin{algorithmic}[1]
 \Require{Block $b$ is partitioned into partitions $p_{l1},\dots , p_{li}, p_r, p_{d}$} 
@@ -986,8 +1034,8 @@ After partitioning and shrinking a block, it uses $O(n)$ memory to store $n$ key
   \State Extend $p_{d}$ to include $p_r$ \Comment{$p_d$ now covers $p_r$}
   \If{$p_{l1} < p_{d}$} \Comment{Check if some non-deleted keys exist in the block}
     \State Set $p_r \gets p_{li}$
-    \State \Call{Partition}{$b$, $p_r$, $p_{d}$} \Comment{Further partition $p_r$}
-    \State \Call{Shrink}{$b$} \Comment{Shrink the block as far as possible}
+    \State \Call{partition}{$b$, $p_r$, $p_{d}$} \Comment{Further partition $p_r$}
+    \State \Call{shrink}{$b$} \Comment{Shrink the block as far as possible}
   \EndIf
   \State $k \gets $ \Call{peek}{$b$}	\Comment{Call peek again on the new right partition}
 \EndIf
@@ -996,44 +1044,44 @@ After partitioning and shrinking a block, it uses $O(n)$ memory to store $n$ key
 \end{algorithmic}
 \end{algorithm}
 % peek
-Once a block is partitioned, the \verb|peek| operation (Algorithm \ref{algo:peek} is relatively easy:
-We simply need to scan all the non-deleted keys in the right partition. The first encountered key is kept as a candidate and compared to all remaining keys in the partition to ensure that it is not dominated by any of them; if it is, the dominating key is taken as the new candidate.
+Once a block is partitioned, the \texttt{peek} operation (Algorithm \ref{algo:peek}) is relatively easy:
+We scan all the non-deleted keys in the right partition and keep the first encountered key as a candidate which is and compared to all remaining keys in the partition to ensure that it is not dominated by any of them.
+If it is, the dominating key is taken as the new candidate.
 % falling back
-In case no such key is found in the right partition, we fall back to the previous partition: since the right partition does not contain any key, it is merged with the section holding the deleted keys; the left partition with highest index is then taken as the new right partition.
-This partition might have to be partitioned further, since its size is bounded from above only by $O(n)$ and thus may exceed the size $s_p$ that we aim for the right partition. 
-Once the top partition falls below $s_p$, we can again scan for a non-dominated key.
+In case no such key is found in the right partition, we fall back to the previous partition: since the right partition does not contain any more non-deleted keys, it is merged with the section holding the deleted keys; the left partition with highest index is then taken as the new right partition.
+This partition might have to be partitioned further, since its size is bounded from above only by $O(n)$ and may exceed $s_p$, the size that we aim for the right partition. 
+Once the right partition falls below this value, we can again scan it for a non-dominated key.
 % dead block
-In case no such key can be found (i.e., after falling back to the last existing partition) the whole block is marked as deleted, implying that no more peek operations have to be executed on it.
-Note that when falling back to another partition, \verb|peek| shrinks the block to ensure that it uses $O(n)$ memory (see Lemma \ref{lemma:partitionandshrink}) but does not merge blocks in case the successor of block $b$ has the same level. 
-It will be shown in the following how the \verb|push| operation ensures the logarithmic number of blocks after using \verb|peek| on a block.
+In case no non-deleted key can be found in the whole block (i.e., after falling back to the last existing partition) the whole block is marked as deleted, implying that no more peek operations have to be executed on it.
+It will be merged with the section holding the deleted keys by the next \texttt{pop} or \texttt{push} operation that triggers a merge. 
+When falling back to another partition, \texttt{peek} shrinks the block to ensure that it uses $O(n)$ memory (see Lemma \ref{lemma:partitionandshrink}) but it does not merge blocks in case the successor of block $b$ has the same level. 
+It will be shown in the following how the \texttt{push} operation ensures the logarithmic number of blocks after while using \texttt{peek}.
 
 \begin{lemma}
-The \verb|peek| operation has amortized time complexity $O(\log n)$.
+The \texttt{peek} operation has amortized time complexity $O(\log n)$.
 \end{lemma}
 \begin{proof}
-The for-loop (lines 3-6) has constant complexity because the size of the right partition $p_r$ is bounded by the constant $s_p$, due to Ass.\ \ref{ass:partition_succeeds}.
+The for-loop (lines 3-6) has constant complexity because the size of the right partition $p_r$ is bounded by the constant $s_p$, due to Assumption \ref{ass:partition_succeeds}.
 
-We amortize the cost of the recursive calls to $\verb|peek|$ as well as to \textsc{Partition} over the number of keys in a block:
+We amortize the cost of the calls to \texttt{partition} and \texttt{peek} over the number of keys in a block:
+All calls to \texttt{partition} are made with non-overlapping ranges of keys and thus for $n$ \texttt{peek} operations the whole block is partitioned only once in total, i.e., the partition operations caused by $n$ calls to \texttt{peek} require $O(n\log n)$ time in total.
+% A block is partitioned into at most $n$ partitions, implying that $n$ \texttt{peek} operations cause at most $n$ fall backs. 
+or each fall-back, \texttt{peek} is called once and thus $n$ \texttt{peek} operations cause at most $n$ recursive calls.
 
-All calls to \textsc{Partition} are made with non-overlapping ranges of keys and thus for $n$ \verb|peek| operations the whole block is partitioned only once, i.e., the partitioning operations caused by $n$ calls to \verb|peek| require $O(n\log n)$ time in total.
-
-A block is partitioned into at most $n$ partitions, implying that $n$ \verb|peek| operations cause at most $n$ fall backs. 
-\verb|peek| is called once for each fall back and thus $n$ \verb|peek| operations cause at most $n$ recursive calls in total.
-
-The complexity of \verb|peek| is dominated by \text{Partition} and thus has an amortized complexity of $O(\log n)$.
+We conclude that the complexity of \texttt{peek} is dominated by \text{partition} and thus the operation has an amortized complexity of $O(\log n)$.
 \end{proof}
 
-\subsubsection{Take} \label{sec:mcpq:description:take}
-While the \verb|peek| operation finds a Pareto-optimal key without removing it from the queue, the \verb|take| operation removes a given key from the MCPQ by marking it as deleted.
-Subsequent \verb|push| and \verb|pop| operations will eventually remove the deleted key from the priority queue.
-The \verb|take| operation thus trivially has complexity $O(1)$.
+\subsubsection{Take} \label{sec:ppq:description:take}
+While the \texttt{peek} operation finds a Pareto-optimal key without removing it from the queue, the \texttt{take} operation removes a given key from the PPQ by marking it as deleted.
+Subsequent \texttt{push} and \texttt{pop} operations will eventually remove the deleted key from the priority queue.
+The \texttt{take} operation thus trivially has complexity $O(1)$.
 
-\subsubsection{Merging blocks} \label{sec:mcpq:description:merging_blocks}
+\subsubsection{Merging blocks} \label{sec:ppq:description:merging_blocks}
 \begin{algorithm}
-\caption{Pseudo-code for merging several blocks}
+\caption{Pseudo code for merging several blocks}
 \label{algo:merge_from}
 \begin{algorithmic}[1]
-\Function{MergeFrom}{Block $b$}
+\Function{merge\_from}{Block $b$}
 \State let $b_p$ be the block preceding $b$
 \State $merged \gets false$
 \While{$b_p$ exists and is either of same level as $b$ }
@@ -1047,34 +1095,34 @@ The \verb|take| operation thus trivially has complexity $O(1)$.
 \end{algorithmic}
 \end{algorithm}
 
-As outlined above, all items that are added to the MCPQ are first stored in a special block of level 0, called $b_a$. 
+As outlined above, all keys that are added to the PPQ are first stored in a special block of level 0, called $b_a$. 
 Once this block is full, a new block of level 0 is created and all keys from the block $b_a$ are moved there.
 If another block of level 0 already exists, the two blocks are merged to create a block of level 1. 
-This operation is continued as long as there are two blocks of same level, as shown in Algorithm \ref{algo:merge_from} (note that due to the structure of the LSML, two blocks of same level are always neighbors).
-Note that the resulting block $b$ will have to be partitioned before the next \verb|peek| operation. 
+This operation is continued as long as there are two blocks of same level, as shown in Algorithm \ref{algo:merge_from} (due to the structure of the LSML, two blocks of same level are always neighbors).
+The resulting block $b$ will have to be partitioned before the next \texttt{peek} operation. 
 
 \begin{corollary}
-The \textsc{MergeFrom} operation has worst-case time complexity $O(\log n)$.
+The \texttt{merge\_from} operation has worst-case time complexity $O(\log n)$.
 \end{corollary}
 \begin{proof}
-Since there are $O(\log n)$ blocks in an LSML, the while loop (lines 4-9) requires at most $O(\log n)$ time (in case all the blocks are combined) and the resulting block is of size at most $n$ 
+Since there are $O(\log n)$ blocks in an LSML, the while loop (lines 4-9) requires at most $O(\log n)$ time (in case all the blocks are combined) and the resulting block is  at most of size $n$.
 \end{proof}
 
-\subsubsection{Push} \label{sec:mcpq:description:push}
-Adding keys to the MCPQ via the \verb|push| operation is quite simple, as shown in Algorithm \ref{algo:push}. 
+\subsubsection{Push} \label{sec:ppq:description:push}
+Adding keys to the PPQ via the \texttt{push} operation is quite simple, as shown in Algorithm \ref{algo:push}. 
 In case the block $b_a$ is full, a new block of level 0 is created and all keys from block $b_a$ are moved there. Blocks are then merged, if necessary.
 
 \begin{algorithm}
-\caption{Pseudo-code for the push operation}
+\caption{Pseudo code for the push operation}
 \label{algo:push}
 \begin{algorithmic}[1]
 \Require{Insert-block $b_\text{insert}$}
-\Function{Push}{Key $k$}
+\Function{push}{Key $k$}
 \If{$b_a$ is full}
   \State Create a new block $b$ of level 0 at the end of the linked list
   \State Move all elements from $b_a$ to $b$
-  \If{\Call{MergeFrom}{$b$}}
-    \State \Call{Partition}{$b$}
+  \If{\Call{merge\_from}{$b$}}
+    \State \Call{partition}{$b$}
   \EndIf
 \EndIf
 \State Insert $k$ in $b_\text{insert}$
@@ -1098,47 +1146,44 @@ In case the block $b_a$ is full, a new block of level 0 is created and all keys 
 \end{table*}
 
 \begin{lemma} \label{lemma:push}
-The \verb|push| operation has amortized time complexity $O(\log^2 n)$.
+The \texttt{push} operation has amortized time complexity $O(\log^2 n)$.
 \end{lemma}
 \begin{proof}
-In case the block $b_a$ is not full, \verb|push| trivially requires $O(1)$ time. 
-Otherwise, creating a new block and moving all keys from block $b_a$ to the new block can be done in constant time (the number of keys in $b_a$ is equal to the constant $s_p$).
-It follows that \textsc{Partition} dominates the complexity of the operation. 
+In case the block $b_a$ is not full, \texttt{push} trivially requires $O(1)$ time. 
+Otherwise, creating a new block and moving all keys from block $b_a$ to the new block can be done in time $O(n)$, since obtaining an iterator to the end of the block requries $O(n)$ time (the number of keys in $b_a$ is equal to the constant $s_p$ and thus copying them requires only constant time).
+Since the \texttt{merge\_from} operation requires $O(\log n$ time it follows that \texttt{partition} dominates the complexity of the operation. 
 
-We amortize its cost over $n$ \verb|push| operations: 
+We amortize its cost over $n$ \texttt{push} operations: 
 The first time block $b_a$ is full, no merge is required since no other block exists. 
-The second time however the new block needs to be merged with the other block of level 0, prompting the partitioning of $2s_p$ keys.
+The second time the new block needs to be merged with the other block of level 0, prompting a \texttt{partition} operation with $2s_p$ keys.
 Once $4 s_p$ keys have been inserted, one additional merge of $4 s_p$ keys is required.
 However, no additional merge of $2 s_p$ keys is done. 
 This can be seen as follows: 
 Inserting $3 s_p $ keys creates one block of level 1 and one block of level 0. 
-After adding $s_p$ more keys, a new level 0 block is created and, since now two blocks of same level exist, \textsc{MergeFrom} will combine them to a level 1 block. 
+After adding $s_p$ more keys, a new level 0 block is created and, since now two blocks of same level exist, \texttt{merge\_from} will combine them to a level 1 block. 
 Now that two blocks of level 1 exists, they are combined into a level 2 block, which is then partitioned.
-Table \ref{table:nrMerges} list the number of keys processed in a merge and partition operation after a given number of keys have been added.
+Table \ref{table:nrMerges} list the number of keys processed in the \texttt{merge\_from} and \texttt{partition} operation after a given number of keys have been added.
 
 One merge operation is required every $2 s_p$ keys, i.e., $n/2s_p$ merge operations are required for $n$ keys. 
 This is clearly less than one merge of $2 s_p$ keys every $2 s_p$ keys plus one merge of $4 s_p$ keys every $4 s_p$ keys and so on. 
-The number of keys processed by the partition operation after a merge operations is thus at most  $m = n \log n$ and pushing $n$ keys requires at most 
+The number of keys processed by the \texttt{partition} operation is thus at most  $m = n \log n$.
+Pushing $n$ keys therefore requires at most 
 $$
 m \log m = n \log n \log (n \log n) = n \log^2 n + n \log n \log \log n
 $$
-time, implying \verb|push| has amortized complexity $O(\log^2 n)$.
+time, implying \texttt{push} has amortized complexity $O(\log^2 n)$.
 \end{proof}
 
 
-\subsubsection{Pop} \label{sec:mcpq:description:pop}
-To find a non-dominated key, \verb|peek| is used to generate a set of $O(\log n)$ keys (one per block), where each key is Pareto-optimal w.r.t.\ the keys stored in the block it was obtained from. 
-Thus, this set needs to be scanned to ensure that a key that is not dominated by any other in the set is returned. \todo{We have a problem here: the ``not dominated'' relation is not transitive; thus, the key we eventually return might be dominated by one of the keys in another block}.
-In case the number of non-deleted keys in a block after a \verb|peek| operation drops below half the block's capacity, the block is shrunk. 
-To maintain the logarithmic number of blocks, a merge of $b$ with its predecessor (in case the block was shrunk to the same level as $b$ in the previous iteration of the while loop), or with its successor (in case $b$ got shrunk to the same level as its successor and the successor is not shrunk in the next iteration) might be required. 
-However, at most one of these situations 
-
-In case the predecessor of block $b$ was shrunk to 
-Block $b$ is merged with its predecessor $b_p$ in case $b_p$ was shrunk in the previous iteration of the while loop or with its successor $b_s$ in case $b$ gets shrunk to the same level of $b_s$. 
-Thus, at most one of those merge operations can occur.
+\subsubsection{Pop} \label{sec:ppq:description:pop}
+To find a non-dominated key, \texttt{peek} is used to generate a set of $O(\log n)$ keys (one per block), where each key is Pareto-optimal w.r.t.\ the keys stored in the block it was obtained from. 
+Thus, this set needs to be scanned to ensure that a key that is not dominated by any other in the set is returned (to ensure this, each block needs to use the same pivot elements for partitioning its keys).
+In case the number of non-deleted keys in a block after a \texttt{peek} operation drops below half the block's capacity, the block is shrunk. 
+To maintain the logarithmic number of blocks, a merge of $b$ with its predecessor (in case the block was shrunk to the same level as $b$ in the previous iteration of the while loop), or with its successor (in case $b$ was shrunk to the same level as its successor and the successor is not shrunk in the next iteration) might be required. 
+However, at most one of these situations can occur..
 
 \begin{algorithm}
-\caption{Pseudo-code for the pop operation}
+\caption{Pseudo code for the pop operation}
 \label{algo:pop}
 \begin{algorithmic}[1]
 \Require{Block $b_a$}
@@ -1155,12 +1200,12 @@ Thus, at most one of those merge operations can occur.
       \State  $b_{best} \gets b$ 
     \EndIf
   \EndIf
-  \If{\Call{MergeFrom}{$b$}}
+  \If{\Call{merge\_from}{$b$}}
     \State mark block $b$ for partitioning
   \EndIf
 \EndWhile
 \ForAll{blocks $x$ marked for partitioning}
-    \State \Call{Partition}{$x$}
+    \State \Call{partition}{$x$}
 \EndFor
 \State \Return{$k$}
 \EndFunction
@@ -1169,30 +1214,29 @@ Thus, at most one of those merge operations can occur.
 
 
 \begin{lemma}
-The \verb|pop| operation has amortized time complexity $O(\log^2 n)$.
+The \texttt{pop} operation has amortized time complexity $O(\log^2 n)$.
 \end{lemma}
 \begin{proof}
-The number of executions of the while loop is bounded by the number of blocks and is thus $O(\log n)$. 
-\verb|peek| and \textsc{MergeFrom} each require $O(\log n)$ time and thus the while loop has complexity $O(\log n)$.
-
-The cost of \textsc{Partition} can be amortized over $n$ \verb|pop| operations to $O(\log^2 n)$ with similar arguments as used for the analysis of the \verb|push| operation (Lemma \ref{lemma:push}).
+The number of executions of the while loop is bounded by the number of blocks and is $O(\log n)$. 
+\texttt{peek} and \texttt{merge\_from} each require $O(\log n)$ time and thus the while loop has complexity $O(\log n)$.
+The cost of \texttt{partition} can be amortized over $n$ \texttt{pop} operations to $O(\log^2 n)$ with similar arguments as used for the analysis of the \texttt{push} operation (Lemma \ref{lemma:push}).
 \end{proof}
 
-So far, for the analysis of \verb|push| (\verb|pop|) we assumed that a sequence of $n$ operations was not interrupted by any \verb|pop| (\verb|push|) operations. 
-Regarding general sequences of \verb|push| and \verb|pop|, we make the following claim (without proof): 
+So far, for the analysis of \texttt{push} (\texttt{pop}) we assumed that a sequence of $n$ operations was not interrupted by any \texttt{pop} (\texttt{push}) operations. 
+Regarding general sequences of \texttt{push} and \texttt{pop}, we make the following claim (without proof): 
 \begin{conjecture}
-% The amortized asymptotic complexity of $n$ \verb|push| (\verb|pop|) operations does not change if some keys are popped (pushed) in the meantime.
+The amortized asymptotic complexity of $n$ \texttt{push} (\texttt{pop}) operations does not change if some keys are popped (pushed) in the meantime.
 \end{conjecture}
 
-\subsubsection{Spying} \label{sec:mcpq:description:spying}
-In case thread does not have any ready-tasks in its own local priority queue, it may \verb|spy| some from another thread. 
+\subsubsection{Spy} \label{sec:ppq:description:spying}
+In case a thread does not have any keys in its own local priority queue, it may \texttt{spy} some from another thread. 
 A thread spies keys from another thread, called the victim, by copying them into its own priority queue.
-The key itself is not altered or deleted from the victims priority queue and it has to be ensured by appropriate synchronization mechanism that two \verb|pop| operations executed by different threads do not return the same key.
-This can be achieved with the help of an atomic flag, associated with each key: before \verb|pop| returns a key, it has to check that the flag is not set before setting the flag itself, all in one atomic operation. 
-This variable is called the \verb|taken| flag and taken keys are dealt with in the same way as deleted keys.
+The key itself is not altered or deleted from the victims priority queue and it has to be ensured by appropriate synchronization mechanisms that two \texttt{pop} operations executed by different threads do not return the same key.
+This can be achieved with the help of an atomic flag associated with each key: before \texttt{pop} returns a key, it has to check that the flag is not set before setting the flag itself, all in one atomic operation. 
+This variable is called the \texttt{taken} flag and taken keys are dealt with in the same way as deleted keys.
 
 \begin{algorithm}
-\caption{Pseudo-code for the spy operation}
+\caption{Pseudo code for the spy operation}
 \label{algo:spy}
 \begin{algorithmic}[1]
 \Function{spy}{}
@@ -1200,54 +1244,53 @@ This variable is called the \verb|taken| flag and taken keys are dealt with in t
 \For{$i \gets other.begin$; $i < other.end$; $i = i+1 $}
   \State Key $k \gets other[i]$
   \If{$k$ is a non-deleted key}
-    \Call{Put}{$k$}
+    \Call{push}{$k$}
   \EndIf
 \EndFor
 \EndFunction
 \end{algorithmic}
 \end{algorithm}
 
-A \verb|spy| operation is performed by scanned the keys of another thread's priority queue (via the Virtual Array) and adding each non-deleted key to the thread-local priority queue via \verb|push|.
+A \texttt{spy} operation is performed by scanned the keys of another thread's priority queue (via the Virtual Array) and adding each non-deleted key to the thread-local priority queue via \texttt{push} (Algorithm \ref{algo:spy}.
 
 \begin{corollary}
-The \verb|spy| operation has complexity $O(n \log^2 n)$.
+The \texttt{spy} operation has complexity $O(n \log^2 n)$.
 \end{corollary}
 \begin{proof}
-This follows immediately from \verb|push| having complexity $O(\log^2 n)$.
+This follows immediately from \texttt{push} having complexity $O(\log^2 n)$.
 \end{proof}
 
-\subsubsection{Memory usage} \label{sec:mcpq:description:memory}
+\subsubsection{Memory usage} \label{sec:ppq:description:memory}
 \begin{corollary}
-After a \verb|pop| operation, an LSML uses $O(n)$ space to store $n$ keys.
+After a \texttt{pop} operation, an LSML uses $O(n)$ space to store $n$ keys.
 \end{corollary}
 \begin{proof}
 This follows directly from lemmas  \ref{lemma:virutalArrayMemory}, \ref{lemma:nrBlocks} and \ref{lemma:partitionandshrink}.
 \end{proof}
 
 
-\subsection{Integration in Pheet} \label{sec:mcpq:pheet_integration}
+\subsection{Integration in Pheet} \label{sec:ppq:pheet_integration}
 % Strategy scheduler 2
-Pheet's \verb|StrategyScheduler2|, a \emph{two-level concurrent ordered container} (described in detail in \cite{Wimmer14}, Section 5.5) allows for a quick integration of our MCPQ into the scheduling framework.
+Pheet's \texttt{StrategyScheduler2}, a \emph{two-level concurrent ordered container} (described in detail in \cite{Wimmer14}, Section 5.5) allows for a quick integration of our PPQ into the scheduling framework.
 % Base classes provided; pheet terminology
 It offers base classes for alternative \emph{task storage}\footnote{In Pheet terminology, a priority queue managing tasks is called a task storage.} implementations.
 % The classes we us.
-In particular, to integrate the MCPQ into the Pheet scheduling framework, we will be extending the following classes:
+In particular, to integrate the PPQ into Pheet, we have to extend the following classes:
 \begin{inparaenum}
-\item \verb|Strategy2BaseTaskStorageBaseItem|,
-\item \verb|Strategy2BaseTaskStoragePlace| and
-\item \verb|Strategy2BaseTaskStorage|.
+\item \texttt{Strategy2BaseTaskStorageBaseItem},
+\item \texttt{Strategy2BaseTaskStoragePlace} and
+\item \texttt{Strategy2BaseTaskStorage}.
 \end{inparaenum}
-We will give an intuitive understanding of their functionality required by our implementation together with a detailed description of the classes extending those base classes in the following. 
+We will give an intuitive understanding of their functionality as far as it is required for our implementation.
 For a detailed description of the base classes and correctness proofs, we refer the reader to \cite{Wimmer14}.
 
-
-\subsection{Implementation} \label{sec:mcpq:impl_analysis}
+\subsection{Implementation} \label{sec:ppq:impl_analysis}
 % A general, high level overview and interfaces
-The class \verb|ParetoItem| (Listing \ref{lst:PTSItem}) is used to represent tasks managed by scheduler. It references an object of type \verb|SchedulerTask| (Listing \ref{lst:SchedulerTask}), which contains the code to be executed, i.e., the work the task is to perform, and an object implementing the \verb|ParetoStrategy| interface (Listing \ref{lst:ParetoStrategy}), which handles the priority of the task and allows to mark it as dead.
+The class \texttt{ParetoItem} (Listing \ref{lst:PTSItem}) is used to represent tasks managed by scheduler. It references an object of type \texttt{SchedulerTask} (Listing \ref{lst:SchedulerTask}), which contains the code to be executed, i.e., the work the task is to perform, and an object implementing the \texttt{ParetoStrategy} interface (Listing \ref{lst:ParetoStrategy}), which handles the priority of the task and allows to mark it as dead.
 
-The \verb|ParetoItem| class has to guarantee that its \verb|take| operation returns the referenced task exactly once, even if multiple threads execute it concurrently. 
-Although an item is at first only visible to the thread creating it (also called the \emph{owning} place), this may change after another thread performs a \verb|steal| operation on the priority queue of the owning place.
-The base class \verb|BaseItem| provides some functionality for memory re-usage and serves as an interface for \verb|StrategyScheduler2|, which is oblivious of the task storage implementation.	
+The \texttt{ParetoItem} class has to guarantee that its \texttt{take} operation returns the referenced task exactly once, even if multiple threads execute it concurrently. 
+Although an item is at first only visible to the thread creating it (also called the \emph{owning} place), this may change after another thread performs a \texttt{spy} operation on the priority queue of the owning place.
+The base class \texttt{BaseItem} provides some functionality for memory re-usage and serves as an interface for \texttt{StrategyScheduler2}, which is oblivious of the task storage implementation.	
 
 % ParetoItem
 \begin{code}[label=lst:PTSItem, caption=Interface of ParetoItem]
@@ -1267,10 +1310,10 @@ class ParetoItem : BaseItem {
 }
 \end{code}
 
-The \verb|SchedulerTask| and \verb|ParetoStrategy| classes have to be implemented by the application employing the scheduler, i.e., the application programmer.
+The \texttt{SchedulerTask} and \texttt{ParetoStrategy} classes have to be implemented by the application employing the scheduler, i.e., the application programmer.
 While the former contains the code to be executed upon execution of the task, the latter provides access to the priority vector associated with a task.
-Furthermore, the function \verb|priorizite|, given another \verb|ParetoStrategy| object, decides which of the two has higher priority. 
-The \verb|dead_task| function is used by the scheduler to query whether the associated task may be dropped without being executed\footnote{This feature, called ``speculative execution'', is described in Section \ref{sec:pheet:task_priorites}}.
+Furthermore, the function \texttt{priorizite}, given another \texttt{ParetoStrategy} object, decides which of the two has higher priority. 
+The \texttt{dead\_task} function is used by the scheduler to query whether the associated task may be dropped without being executed\footnote{This feature, called ``speculative execution'', is described in Section \ref{sec:pheet:task_priorites}}.
 Both functions will be used by our task storage implementation to order tasks w.r.t.\ their associated priorities.
 
 % Task
@@ -1282,19 +1325,19 @@ class SchedulerTask {
 }
 \end{code}
 
-The central -- or global -- part of the MCQP is implemented in \verb|ParetoTaskStorage| (Listing \ref{lst:ParetoTaskStorage}), which is mostly used for rerouting \verb|pop| and \verb|steal| operations to the place-local parts of the MCPQ, implemented in \verb|ParetoTaskStoragePlace| (Listing \ref{lst:ParetoTaskStoragePlace}). 
+The central -- or global -- part of the MCQP is implemented in \texttt{ParetoTaskStorage} (Listing \ref{lst:ParetoTaskStorage}), which is mostly used for rerouting \texttt{pop} and \texttt{spy} operations to the place-local parts of the PPQ, implemented in \texttt{ParetoTaskStoragePlace} (Listing \ref{lst:ParetoTaskStoragePlace}). 
 % boundary
-Notice that the \verb|pop| and \verb|steal| operations of both classes have an additional parameter called the boundary item. 
-The \verb|StrategyScheduler2| maintains its own LIFO priority queue\footnote{This is necessary for some advanced features the base data structures provide. We do not require them, they are not introduced in this report.} and the boundary item would be the next item selected by \verb|pop|/\verb|steal| according to this order.
+Notice that the \texttt{pop} and \texttt{spy} operations of both classes have an additional parameter called the boundary item. 
+The \texttt{StrategyScheduler2} maintains its own LIFO priority queue\footnote{This is necessary for some advanced features the base data structures provide. We do not require them, they are not introduced in this report.} and the boundary item would be the next item selected by \texttt{pop}/\texttt{spy} according to this order.
 However, this default behavior may be overridden within certain limits: 
 \begin{itemize}
-\item The \verb|pop|/\verb|steal| operation may select other items with a \emph{higher} priority than the boundary item, thereby violating the LIFO order. Since we are using multi-dimensional priority vector, this means that the priority associated with the selected item may not be dominated by the priority of the task referenced by the boundary item.
-\item The \verb|pop| operation must not return a \verb|SchedulerTask| if the boundary item was already taken by another thread in the meantime.
+\item The \texttt{pop}/\texttt{spy} operation may select other items with a \emph{higher} priority than the boundary item, thereby violating the LIFO order. Since we are using multi-dimensional priority vector, this means that the priority associated with the selected item may not be dominated by the priority of the task referenced by the boundary item.
+\item The \texttt{pop} operation must not return a \texttt{SchedulerTask} if the boundary item was already taken by another thread in the meantime.
 \end{itemize}
 
 % TaskStoragePlace
 \begin{code}[label=lst:ParetoTaskStoragePlace, caption=Interface of ParetoTaskStoragePlace]
-/* The place-local part of the MCPQ. */
+/* The place-local part of the PPQ. */
 class ParetoTaskStoragePlace : Strategy2BaseTaskStoragePlace {
 
   /* Add the given item to the task storage. */
@@ -1310,7 +1353,7 @@ class ParetoTaskStoragePlace : Strategy2BaseTaskStoragePlace {
 
 % TaskStorage
 \begin{code}[label=lst:ParetoTaskStorage, caption=Implementation of ParetoTaskStorage]
-/* The global part of the MCPQ. Calls to pop and steal are simply forwarded to the responsible places. */
+/* The global part of the PPQ. Calls to pop and steal are simply forwarded to the responsible places. */
 class ParetoTaskStorage : Strategy2BaseTaskStorage {
 
   ParetoTaskStoragePlace[] places;
@@ -1373,7 +1416,7 @@ p &\mapsto \vect{w}(p) = (w_1(p), w_2(p), \dots , w_d(p)) \quad , \neqn{msp_weig
 where $w_j(p) = \sum_{i=1}^{k}c_j(a_i)$ $\forall j \in \{1,\dots,d\}$.
 
 % Pareto optima
-A path $p$ from node $v_1$ to node $v_2$ is a \emph{Pareto-optimal} or \emph{non-dominated} path if there is no path $q \in P$ from $v_1$ to $v_2$ s.t.~$q \dom p$.
+A path $p$ from node $v_1$ to node $v_2$ is a \emph{Pareto-optimal} or \emph{non-dominated} path if there is no path $q \in P$ from $v_1$ to $v_2$ s.t.~$q \less p$.
 Informally, we also call a Pareto-optimal path $p$ \emph{shortest path}.
 Thus, for the MSP, the solution consists of a set of Pareto-optimal paths for each considered pair of nodes.
 
@@ -1404,7 +1447,7 @@ Due to the hardness of the MSP, heuristic methods are sometimes employed (see, e
 A common approach is to define a total order relation $\tor$ on $P$ that allows for a more efficient computation of the Pareto-optima.
 Such a relation $\tor$ has to satisfy the following properties\footnote{We denote the concatenation of two paths $p_1 \in P_{u,v}$, $p_2 \in P_{v,w}$ as $\cP{p_1}{p_2}$}
 \begin{align}
-\forall p,q \in P_{u,v}: p \dom q \implies p \tor q  \quad \text{Dominance} \\
+\forall p,q \in P_{u,v}: p \less q \implies p \tor q  \quad \text{Dominance} \\
 \forall p \in P_{u,v}, \forall (v,w) \in A: p \tor \cP{p}{w} \quad \text{Monotonic}
 \end{align}
 Martins et al.~\cite{MartinsPRS07} show that the following relation satisfies these requirements:
@@ -1414,7 +1457,7 @@ p \osum q \iff \sum_{i=1}^{d} w_i(p) \leq  \sum_{i=1}^{d} w_i(q)
 % supported/non-supported solutions
 However, as Sonnier \cite{Sonnier06} points out, a problem with algorithms based on such a relation is that 
 \begin{align}
-p \osum q  \notimplies p \dom q \quad , \neqn{osum_problem}
+p \osum q  \notimplies p \less q \quad , \neqn{osum_problem}
 \end{align}
 i.e., only solutions that lie on the convex hull of the feasible region are found, which are called the supported solutions. 
 In other words, there exist Pareto-optima which may not be found because of the property given in Eq.~\ref{eq:osum_problem}.
@@ -1539,7 +1582,7 @@ The procedure for expanding a candidate path is described in detail in Algorithm
 
 % Abstract description of the algorithm
 \begin{algorithm}
-\caption{Pseudo-code for our MSP algorithm}
+\caption{Pseudo code for our MSP algorithm}
 \label{algo:abstractMSP}
 \begin{algorithmic}[1]
 \Require{Graph $G$, start node $s$}
@@ -1556,7 +1599,7 @@ The procedure for expanding a candidate path is described in detail in Algorithm
 \end{algorithm}
 
 \begin{algorithm}
-\caption{Pseudo-code for expanding a candidate path}
+\caption{Pseudo code for expanding a candidate path}
 \label{algo:abstractExpand}
 \begin{algorithmic}[1]
 \Require{$S_p[v]$: Set of Pareto-optimal paths to node $v$ ($\forall v\in V$)}
@@ -1565,10 +1608,10 @@ The procedure for expanding a candidate path is described in detail in Algorithm
 \Function{expand}{Path $p$}
 \ForAll{$w \in p$.head.neighbors} 
   \State $p' \gets \cP{p}{w}$	\Comment{Generate candidate}
-  \If{$\nexists x \in S_p[w] \text{ s.t.\ } x \dom p'$} 
+  \If{$\nexists x \in S_p[w] \text{ s.t.\ } x \less p'$} 
   \Statex \Comment{Candidate is not dominated by any path in the Pareto-set}
     \ForAll{$y\in S_p[w]$} \Comment{Remove any path dominated by $p'$}
-      \If{$p' \dom y$}
+      \If{$p' \less y$}
 	\State $S_p[w] \gets S_p[w] \setminus y$
       \EndIf
     \EndFor
@@ -1602,8 +1645,8 @@ Within this framework, we only have to provide implementations of
 \item a scheduling strategy.
 \end{inparaenum}
 % Pareto set
-For the implementation, we extend the Pareto-set (Lst.\ \ref{lst:ParetoSet}) by the \verb|insert| operation to provide some of the functionality required in the procedure for expanding a path (Algorithm \ref{algo:abstractExpand}).
-In particular, \verb|insert|, given a path $p = \langle s,\dots,v \rangle$, removes all paths at node $v$ which are dominated by $p$; if however, $p$ is dominated by some path $p'$ in the Pareto-set for node $v$, $p$ is not added to the Pareto-set but is instead marked as dominated itself. 
+For the implementation, we extend the Pareto-set (Lst.\ \ref{lst:ParetoSet}) by the \texttt{insert} operation to provide some of the functionality required in the procedure for expanding a path (Algorithm \ref{algo:abstractExpand}).
+In particular, \texttt{insert}, given a path $p = \langle s,\dots,v \rangle$, removes all paths at node $v$ which are dominated by $p$; if however, $p$ is dominated by some path $p'$ in the Pareto-set for node $v$, $p$ is not added to the Pareto-set but is instead marked as dominated itself. 
 The operation returns true if and only if $p$ was added to the Pareto-set.
 Note that for any path $p$, only one of the following two alternatives may occur:
 \begin{itemize}
@@ -1612,7 +1655,7 @@ Note that for any path $p$, only one of the following two alternatives may occur
 \end{itemize} 
 In other words, it cannot be the case that $p$ is marked dominated, but another path $p'$ already in the Pareto-set was removed from it because it is dominated by $p$. 
 To see this, assume that the Pareto-set contains two paths $p_1$ and $p_2$, where $p_1$ is dominated by $p$ and $p_2$ dominates $p$. 
-The \verb|insert| operation would first remove $p_1$ since $p \less p_1$ and then mark $p$ dominated since $p_2 \less p$. 
+The \texttt{insert} operation would first remove $p_1$ since $p \less p_1$ and then mark $p$ dominated since $p_2 \less p$. 
 However, due to transitivity of the dominance relation, this implies $p_2 \less p_1$. 
 
 % Pareto set implementation
@@ -1644,13 +1687,13 @@ private:
 \end{code}
 
 An implementation of the Pheet-based MSP algorithm is given in Lst.\ \ref{lst:msptask}. 
-The \verb|spawn_task| function (line 15) is generic and allows tasks to be spawned with different strategies.
+The \texttt{spawn\_task} function (line 15) is generic and allows tasks to be spawned with different strategies.
 The scheduler uses the strategy -- that is to be defined by the application -- to determine the order of tasks.
 Furthermore, tasks may be marked dead via their associated strategy in case they were spawned speculatively and need not be executed anymore.
-We provide two strategies that are based the generic \verb|Strategy| class (Lst.\ \ref{lst:strategy})
+We provide two strategies that are based the generic \texttt{Strategy} class (Lst.\ \ref{lst:strategy})
 \begin{itemize}
-\item The \verb|LinearCombinationStrategy| (Lst.\ \ref{lst:LinearCombinationStrategy} assumes that a total order relation can be defined on the set of priority vectors. As Section \ref{sec:shortest_path:approx} shows, the $\leq_{sum}$ relation based on the $L¹$ norm constitutes such a relation for integer vectors (which, however, is not applicable in general).
-\item The \verb|ParetoStrategy| (Lst.\ \ref{lst:ParetoStrategy}) allows for general (i.e., non-integer) priority vectors and does not rely on a total order relation.
+\item The \texttt{L1Strategy} (Lst.\ \ref{lst:LinearCombinationStrategy} assumes that a total order relation can be defined on the set of priority vectors. As Section \ref{sec:shortest_path:approx} shows, the $\leq_{sum}$ relation based on the $L¹$ norm constitutes such a relation for integer vectors (which, however, is not applicable in general).
+\item The \texttt{ParetoStrategy} (Lst.\ \ref{lst:ParetoStrategy}) allows for general (i.e., non-integer) priority vectors and does not rely on a total order relation.
 Given two priority vectors, it offers function to check whether one dominates the other as well to compare them w.r.t.\ a given dimension.
 \end{itemize}
 
@@ -1692,13 +1735,13 @@ class ParetoStrategy {
 }
 \end{code}
 
-When a new task is spawned with the \verb|ParetoStrategy|, the \verb|ParetoTaskStorage|, an implementation of our MCPQ (Section \ref{sec:mcpq}), is used by the scheduler. 
-Pheet's \verb|LSMLocalityTaskStorage| (see \cite{Wimmer14}) is used for tasks spawned with the \verb|LinearCombinationStrategy| strategy.
+When a new task is spawned with the \texttt{ParetoStrategy}, the \texttt{ParetoTaskStorage}, an implementation of our PPQ (Section \ref{sec:ppq}), is used by the scheduler. 
+Pheet's \texttt{LSMLocalityTaskStorage} (see \cite{Wimmer14}) is used for tasks spawned with the \texttt{L1Strategy} strategy.
 We note here that Pheet provides several more priority queue implementations (or task storages in Pheet terminology) that the scheduler can employ. 
-However, the \verb|LSMLocalityTaskStorage| priority queue is the most suitable for a comparison with our MCPQ implementation since it too observes purely local ordering guarantees and is also based on log-structured merge-lists.
+However, the \texttt{LSMLocalityTaskStorage} priority queue is the most suitable for a comparison with our PPQ implementation since it too observes purely local ordering guarantees and is also based on log-structured merge-lists.
 
 \section{Performance evaluation} \label{sec:evaluation}
-We compare the performance of our MCPQ to Pheet'S LSM priority queue via the MSP algorithm.
+We compare the performance of our PPQ to Pheet'S LSM priority queue via the MSP algorithm.
 % Mars hardware
 All experiments were run on a shared memory system nicknamed \emph{Mars}, an Intel Xeon based system with the properties listed in Table \ref{table:mars}.
 \begin{table*}
@@ -1719,12 +1762,12 @@ All experiments were run on a shared memory system nicknamed \emph{Mars}, an Int
 \end{center}
 \end{table*}
 % compiler 
-Pheet was compiled using \verb|gcc 4.9.1| with the the \verb|-O3| flag to allow standard compiler optimizations.
+Pheet was compiled using \texttt{gcc 4.9.1} with the the \texttt{-O3} flag to allow standard compiler optimizations.
 All experiments were repeated 20 times and the graphs show the mean values.
 
 \subsubsection*{Test instances} \label{sec:eval:test_instances}
 % test graphs
-Input instances were created by our own graph generator \footnote{\verb|PHEET_HOME/test/msp/lib/Graph/Generator/main.h|}, which generates a random connected digraph with the following arguments:
+Input instances were created by our own graph generator \footnote{\texttt{PHEET\_HOME/test/msp/lib/Graph/Generator/main.h}}, which generates a random connected digraph with the following arguments:
 \begin{compactitem}
 \item \verb|n|: Number of nodes.
 \item \verb|m|: Number of arcs.
@@ -1741,8 +1784,8 @@ These are selected randomly from the set of $n(n-1)$ arcs of a complete graph mi
 \setkeys{Gin}{width=1\textwidth}
 \subsection{Results} \label{sec:results}
 We compare the execution time of the Pheet-based MSP algorithm with the two scheduler variants described in Section \ref{sec:msp_algo:implementation}.
-Fig.\ \ref{fig:plot1} and Fig.\ \ref{fig:plot2} indicate that the problem scales scales reasonably for up to 80 processors when using our MCPQ and it is slower than the LSM variant by roughly a factor of two.
-However, the  LSM variant uses a total ordering relation (e.g., the $L^1$ norm) for ordering tasks, which is not applicable to priority vectors of a more general form, while the MCPQ does not rely on such an ordering and we claim that it can be worthwhile trade-off.
+Fig.\ \ref{fig:plot1} and Fig.\ \ref{fig:plot2} indicate that the problem scales scales reasonably for up to 80 processors when using our PPQ and it is slower than the LSM variant by roughly a factor of two.
+However, the  LSM variant uses a total ordering relation (e.g., the $L^1$ norm) for ordering tasks, which is not applicable to priority vectors of a more general form, while the PPQ does not rely on such an ordering and we claim that it can be worthwhile trade-off.
 
 \begin{figure}[H]
 \begin{center}
@@ -1773,7 +1816,16 @@ yAxis="total_time", from=1, to=80)
 
 
 \section{Conclusion} \label{sec:conclusion}
-\todo{...}
+Task-based priority scheduling is an established mechanism for scheduling work for highly parallel shared memory systems.
+We extended this concept by allowing multi-dimensional priority vectors for tasks and discussing how and under which circumstances multi-dimensional priorities may be reduced to scalar priority values, as well as the limitations of this approach. 
+An efficient implementation of a concurrent priority queue that cam directly work with priority vectors (called Pareto priority queue, or PPQ) is required e.g., for the multi-criteria shortest path problem, which we used as an example application for the PPQ and as a benchmark. 
+A detailed description and analysis of the PPQ was given, which shows that both the \texttt{push} and \texttt{pop} operation require $O(\log^2 n)$ amortized time. 
+The performance of a Pheet-based implementation was compared to another priority queue (called LSM) already available in Pheet, which relies on a total ordering of the priority vectors (The $L^1$ norm is such a total order relation for integer vectors).
+The PPQ scales well to as many as 80 processes but is slower by a factor of 2 when compared to the other priority queue.
+In our option, this is a reasonable trade-off for being able to directly handle general multi-dimensional priority vectors, while to the LSM relies on the $L^1$ norm and is thus restricted to less general priority vectors, which it can handle only indirectly. 
+
+For the analyis, some assumptions had to be made which we plan to rmeove in future work. 
+Furthermore, a more rigid performance evaluation that does not depend on a specific example application is required.
 
 \section{Acknowledgements} \label{sec:ack}
 I sincerely want to thank my supervisor Martin Wimmer for providing this interesting and challenging topic as well as guidance and support throughout the duration of the project, as well as my co-supervisor Jesper Larsson Tr\"aff for valuable feedback.
