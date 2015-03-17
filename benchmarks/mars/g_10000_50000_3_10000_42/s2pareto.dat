@@ -1,0 +1,18 @@
+total_time,comment,cpus,edges,scheduler,date,paths,num_actual_tasks,algorithm,num_dead_tasks,hostname,test,nodes
+1.61938, MCPQ,1,50000,StrategyScheduler2<Strategy2BaseTaskStorage<128>>,2014-10-01,139301,150579,Strategy2Msp<ParetoLocalityTaskStorage>,0,mars,msp,10000
+1.11043, MCPQ,2,50000,StrategyScheduler2<Strategy2BaseTaskStorage<128>>,2014-10-01,139301,166606,Strategy2Msp<ParetoLocalityTaskStorage>,0,mars,msp,10000
+0.786175, MCPQ,3,50000,StrategyScheduler2<Strategy2BaseTaskStorage<128>>,2014-10-01,139301,156921,Strategy2Msp<ParetoLocalityTaskStorage>,0,mars,msp,10000
+0.576848, MCPQ,4,50000,StrategyScheduler2<Strategy2BaseTaskStorage<128>>,2014-10-01,139301,157997,Strategy2Msp<ParetoLocalityTaskStorage>,0,mars,msp,10000
+0.527709, MCPQ,5,50000,StrategyScheduler2<Strategy2BaseTaskStorage<128>>,2014-10-01,139301,180298,Strategy2Msp<ParetoLocalityTaskStorage>,0,mars,msp,10000
+0.400477, MCPQ,7,50000,StrategyScheduler2<Strategy2BaseTaskStorage<128>>,2014-10-01,139301,185732,Strategy2Msp<ParetoLocalityTaskStorage>,0,mars,msp,10000
+0.259066, MCPQ,10,50000,StrategyScheduler2<Strategy2BaseTaskStorage<128>>,2014-10-01,139301,175582,Strategy2Msp<ParetoLocalityTaskStorage>,0,mars,msp,10000
+0.25388, MCPQ,15,50000,StrategyScheduler2<Strategy2BaseTaskStorage<128>>,2014-10-01,139301,178872,Strategy2Msp<ParetoLocalityTaskStorage>,0,mars,msp,10000
+0.224247, MCPQ,20,50000,StrategyScheduler2<Strategy2BaseTaskStorage<128>>,2014-10-01,139301,185958,Strategy2Msp<ParetoLocalityTaskStorage>,0,mars,msp,10000
+0.249271, MCPQ,25,50000,StrategyScheduler2<Strategy2BaseTaskStorage<128>>,2014-10-01,139301,170898,Strategy2Msp<ParetoLocalityTaskStorage>,0,mars,msp,10000
+0.243925, MCPQ,30,50000,StrategyScheduler2<Strategy2BaseTaskStorage<128>>,2014-10-01,139301,161412,Strategy2Msp<ParetoLocalityTaskStorage>,0,mars,msp,10000
+0.304994, MCPQ,35,50000,StrategyScheduler2<Strategy2BaseTaskStorage<128>>,2014-10-01,139301,145241,Strategy2Msp<ParetoLocalityTaskStorage>,0,mars,msp,10000
+0.275466, MCPQ,40,50000,StrategyScheduler2<Strategy2BaseTaskStorage<128>>,2014-10-01,139301,123657,Strategy2Msp<ParetoLocalityTaskStorage>,0,mars,msp,10000
+0.60561, MCPQ,50,50000,StrategyScheduler2<Strategy2BaseTaskStorage<128>>,2014-10-01,139301,165402,Strategy2Msp<ParetoLocalityTaskStorage>,0,mars,msp,10000
+0.83465, MCPQ,60,50000,StrategyScheduler2<Strategy2BaseTaskStorage<128>>,2014-10-01,139301,171302,Strategy2Msp<ParetoLocalityTaskStorage>,0,mars,msp,10000
+1.12757, MCPQ,70,50000,StrategyScheduler2<Strategy2BaseTaskStorage<128>>,2014-10-01,139301,189676,Strategy2Msp<ParetoLocalityTaskStorage>,0,mars,msp,10000
+0.462956, MCPQ,80,50000,StrategyScheduler2<Strategy2BaseTaskStorage<128>>,2014-10-01,139301,129118,Strategy2Msp<ParetoLocalityTaskStorage>,0,mars,msp,10000
